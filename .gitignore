@@ -1,3 +1,6 @@
+# Ignore synx stamp used in the Makefile
+.sync.stamp
+
 # JetBrains IDEs (e.g., PyCharm)
 .idea/
 
