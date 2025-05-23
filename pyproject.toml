@@ -1,0 +1,16 @@
+[project]
+name = "pipeflow"
+version = "0.1.0"
+description = "A wrapper around pipefunc for managing workflows."
+authors = [{name="James Neill", email="hello@jamesneill.codes"}]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "cleo>=2.1.0",
+    "platformdirs>=4.3.8",
+    "tomlkit>=0.13.2",
+]
+
+[tool.isort]
+profile = "black"
+force_single_line = true

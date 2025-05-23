@@ -1,0 +1,56 @@
+# JetBrains IDEs (e.g., PyCharm)
+.idea/
+
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Installer logs
+pip-log.txt
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+*.env
+*.venv
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# MyPy, Pyre, Pylint
+.mypy_cache/
+.pyre/
+.pylint.d/
+
+# VSCode settings (optional, if you use both)
+.vscode/
+
+# macOS files
+.DS_Store
+
+# Other IDEs (optional)
+*.swp
+*.swo
