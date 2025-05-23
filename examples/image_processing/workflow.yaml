@@ -1,0 +1,76 @@
+apiVersion: pipeflow.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: skimage-image-batch-processor-from-files
+  version: "1.0.0"
+  description: "Loads a batch of images from a directory and processes them."
+spec:
+  global_inputs:
+    image_directory:
+      description: "Path to the directory containing images to process."
+      type: "string"
+    image_glob_pattern: # Optional pattern for file matching
+      description: "Glob pattern to find images (e.g., '*.png', '*.jpg')."
+      type: "string"
+      default: "*.jpg,*.jpeg,*.png" # A sensible default
+
+  steps:
+    - id: "load_image_batch_from_disk"
+      function: "examples.image_processing.main.load_images_from_directory"
+      description: "Loads all images from a specified directory."
+      inputs:
+        directory_path: "$global.image_directory"
+        glob_pattern: "$global.image_glob_pattern"
+      pipefunc_options:
+        # This step outputs the actual batch of image data (e.g., list of np arrays)
+        output_name: "image_batch_data"
+        # This step itself doesn't use mapspec; it produces the whole batch.
+
+    - id: "load_and_preprocess"
+      function: "examples.image_processing.main.load_and_preprocess_image"
+      description: "Converts an image from the batch to grayscale."
+      inputs:
+        image_item: "image_item"
+      pipefunc_options:
+        output_name: "gray_image"
+        # 'image_item' here MUST match the argument name in the Python function above.
+        # This maps over the 'image_batch_data' list.
+        mapspec: "image_item[n] -> gray_image[n]"
+
+    - id: "segment"
+      function: "examples.image_processing.main.segment_image"
+      inputs:
+        # Py func: 'def segment_image(gray_image):'
+        gray_image: "load_and_preprocess" # This refers to the output "gray_image"
+      pipefunc_options:
+        output_name: "segmented_image"
+        mapspec: "gray_image[n] -> segmented_image[n]"
+
+    # ... (rest of the steps: extract_features, classify, aggregate_results)
+    # These steps remain the same as before, consuming outputs from preceding steps.
+
+    - id: "extract_features"
+      function: "examples.image_processing.main.extract_feature"
+      inputs:
+        segmented_image: "segment"
+      pipefunc_options:
+        output_name: "feature"
+        mapspec: "segmented_image[n] -> feature[n]"
+
+    - id: "classify"
+      function: "examples.image_processing.main.classify_object"
+      inputs:
+        feature: "extract_features"
+      pipefunc_options:
+        output_name: "classification"
+        mapspec: "feature[n] -> classification[n]"
+
+    - id: "aggregate_results"
+      function: "examples.image_processing.main.aggregate_results"
+      inputs:
+        classification: "classify"
+      pipefunc_options:
+        output_name: "summary"
+
+  pipeline_outputs:
+    - "aggregate_results.summary"
