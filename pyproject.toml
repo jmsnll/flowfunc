@@ -14,3 +14,93 @@ dependencies = [
 [tool.isort]
 profile = "black"
 force_single_line = true
+
+
+[tool.ruff]
+target-version = "py313"
+
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+[tool.ruff.lint]
+# Enable Pyflakes (F), pycodestyle error (E) and warning (W) codes, isort (I), and many other useful rule sets.
+# For all available rules: https://docs.astral.sh/ruff/rules/
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # Pyflakes
+    "I",  # isort
+    "N",  # pep8-naming
+    "D",  # pydocstyle (see pydocstyle section below for conventions)
+    "UP", # pyupgrade
+    "ANN",# flake8-annotations
+    "B",  # flake8-bugbear
+    "A",  # flake8-builtins
+    "C4", # flake8-comprehensions
+    "ERA",# eradicate (commented out code)
+    "ISC",# flake8-implicit-str-concat
+    "PT", # flake8-pytest-style
+    "Q",  # flake8-quotes (consistency for string quotes)
+    "RET",# flake8-return
+    "SIM",# flake8-simplify
+    "TID",# flake8-tidy-imports
+    "TCH",# flake8-type-checking (helps with imports for type checking)
+    "ARG",# flake8-unused-arguments
+    "PTH",# flake8-use-pathlib
+    "TRY",# tryceratops (exception handling best practices)
+    "RUF",# Ruff-specific rules
+]
+ignore = [
+    "ANN101", # Missing type annotation for `self` in method
+    "ANN102", # Missing type annotation for `cls` in classmethod
+    "ANN401", # Dynamically typed expressions (Any) are disallowed in annotations
+    "D203",   # 1 blank line required before class docstring (conflicts with D211)
+    "D212",   # Multi-line docstring summary should start at the first line
+]
+
+# Allow autofix for all enabled rules (when --fix is used)
+fixable = ["ALL"]
+unfixable = []
+
+# Exclude commonly excluded directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "*/migrations/*", # Example: Django migrations
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+# Like Black, indent with spaces, not tabs.
+indent-style = "space"
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+# Auto-detect line endings.
+line-ending = "auto"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2.0",
+]

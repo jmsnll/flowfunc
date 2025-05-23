@@ -1,0 +1,48 @@
+# .pre-commit-config.yaml
+# For checking latest versions:
+# pre-commit-hooks: https://github.com/pre-commit/pre-commit-hooks/releases
+# ruff: https://github.com/astral-sh/ruff-pre-commit/releases
+# mypy: https://github.com/pre-commit/mirrors-mypy/releases
+
+# Optional: Set a default language version for hooks that use Python.
+# default_language_version:
+#   python: python3.11 # Or your project's Python version
+
+repos:
+  # ===== Standard Pre-commit Hooks (essential checks) =====
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0 # Check for the latest stable release
+    hooks:
+      - id: trailing-whitespace       # Trims trailing whitespace
+      - id: end-of-file-fixer         # Ensures files end with a newline
+      - id: check-yaml                # Checks YAML files for parseable syntax
+      - id: check-json                # Checks JSON files for parseable syntax
+      - id: check-toml                # Checks TOML files (like pyproject.toml)
+      - id: check-added-large-files   # Prevents committing large files
+        args: ['--maxkb=1024']       # Example: max 1MB
+      - id: check-merge-conflict      # Checks for files that contain merge conflict strings
+      # - id: debug-statements        # Optionally, check for leftover debug statements
+      # - id: detect-private-key      # Optionally, check for private keys
+
+  # ===== Ruff (Fast, Rust-based Linter & Formatter) =====
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Find the latest tag that aligns with the Ruff version you want to use.
+    rev: v0.11.11 # Check for the latest version (e.g., v0.x.y)
+    hooks:
+      - id: ruff
+        name: "Ruff: Lint and auto-fix"
+        args: [--fix, --exit-non-zero-on-fix] # Apply fixes and fail if fixes were made (so you can review/stage them)
+        # To use a specific ruff.toml or pyproject.toml section:
+        # args: [--config=path/to/your/ruff.toml, --fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+        name: "Ruff: Format code"
+        # If you want to only check and not auto-format during pre-commit:
+        # args: [--check]
+
+# ===== Pyupgrade (Optional, for upgrading syntax to newer Python versions) =====
+# Ruff can do some of this with its UP rules, but pyupgrade is more specialized.
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.16.0 # Check for the latest version
+    hooks:
+      - id: pyupgrade
+        args: [--py313-plus] # Specify your minimum Python version
