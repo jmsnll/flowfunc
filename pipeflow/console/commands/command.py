@@ -7,7 +7,7 @@ from cleo.exceptions import CleoValueError
 
 if TYPE_CHECKING:
     from pipeflow.console.application import PipeflowConsole
-    from pipeflow.pipeflow import Pipeflow
+    from pipeflow.app import Pipeflow
 
 
 class Command(BaseCommand):
