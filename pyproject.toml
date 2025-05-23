@@ -93,6 +93,11 @@ skip-magic-trailing-comma = false
 # Auto-detect line endings.
 line-ending = "auto"
 
+[tool.uv.workspace]
+members = [
+    "examples/image_processing_daily",
+]
+
 [dependency-groups]
 dev = [
     "bandit>=1.8.3",
