@@ -1,5 +1,4 @@
-NAME := pipeflow # <-- TODO: Update this to your project's actual package name
-
+NAME := pipeflow
 
 # UV command, ensuring it's available
 UV := $(shell command -v uv 2> /dev/null)
