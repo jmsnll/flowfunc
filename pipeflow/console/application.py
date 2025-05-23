@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from contextlib import suppress
 from importlib import import_module
 from pathlib import Path
@@ -9,8 +8,7 @@ from typing import TYPE_CHECKING
 
 from cleo.application import Application as BaseApplication
 from cleo.events.console_command_event import ConsoleCommandEvent
-from cleo.events.console_events import COMMAND
-from cleo.events.console_events import SIGNAL
+from cleo.events.console_events import COMMAND, SIGNAL
 from cleo.events.event_dispatcher import EventDispatcher
 from cleo.exceptions import CleoError
 from cleo.formatters.style import Style

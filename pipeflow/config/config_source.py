@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from abc import ABC
-from abc import abstractmethod
-from typing import TYPE_CHECKING
-from typing import Any
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any
 
 from cleo.io.null_io import NullIO
 

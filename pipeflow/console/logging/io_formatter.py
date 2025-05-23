@@ -4,8 +4,7 @@ import logging
 import sys
 import textwrap
 from pathlib import Path
-from typing import TYPE_CHECKING
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from pipeflow.console.logging.filters import PIPEFLOW_FILTER
 

@@ -2,13 +2,11 @@ import logging
 import os
 import re
 from copy import deepcopy
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pipeflow.config.file_config_source import FileConfigSource
 from pipeflow.env import get_prefix_env
-from pipeflow.locations import CONFIG_DIR
-from pipeflow.locations import data_dir
+from pipeflow.locations import CONFIG_DIR, data_dir
 from pipeflow.toml import TOMLFile
 
 logger = logging.getLogger(__name__)
@@ -16,8 +14,6 @@ _default_config = None
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from collections.abc import Mapping
-    from collections.abc import Sequence
 
     from pipeflow.config.config_source import ConfigSource
 

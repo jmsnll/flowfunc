@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from platformdirs import user_cache_path
-from platformdirs import user_config_path
-from platformdirs import user_data_path
+from platformdirs import user_cache_path, user_config_path, user_data_path
 
 from pipeflow.__version__ import APP_NAME
 from pipeflow.env import get_prefix_env
