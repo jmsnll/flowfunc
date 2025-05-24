@@ -4,7 +4,8 @@ import logging
 import pipefunc
 
 from pipeflow.workflow.callable import import_callable
-from pipeflow.workflow.exceptions import CallableImportError, PipelineBuildError
+from pipeflow.workflow.exceptions import CallableImportError
+from pipeflow.workflow.exceptions import PipelineBuildError
 
 logger = logging.getLogger(__name__)
 
@@ -112,10 +113,6 @@ class PipeflowFunc(pipefunc.PipeFunc):
                 f"but found type {type(spec_inputs_config).__name__}."
             )
 
-        logger.info(
-            f"Input validation passed for function '{function_fqn}' {step_id_info}."
-        )
-
         # Prepare kwargs for the PipeFunc constructor using the static helper method
         # This helper now filters out None values.
         constructor_kwargs = cls._prepare_constructor_kwargs(definition)
@@ -123,10 +120,6 @@ class PipeflowFunc(pipefunc.PipeFunc):
         # Create and return an instance of cls (PipeflowFunc)
         # This calls pipefunc.PipeFunc.__init__(self, func, **constructor_kwargs)
         try:
-            kv_pair_strings = [f'{k}="{v}"' for k, v in constructor_kwargs.items()]
-            print(
-                f"PipeFunc({str(callable_obj.__name__)}, {", ".join(kv_pair_strings)})"
-            )
             return pipefunc.PipeFunc(func=callable_obj, **constructor_kwargs)
         except Exception as e:
             raise PipelineBuildError(

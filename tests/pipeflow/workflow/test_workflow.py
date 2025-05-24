@@ -4,7 +4,8 @@ import pipefunc
 import pytest
 
 from pipeflow.workflow.exceptions import PipelineBuildError
-from pipeflow.workflow.workflow import PipeflowFunc, Workflow
+from pipeflow.workflow.workflow import PipeflowFunc
+from pipeflow.workflow.workflow import Workflow
 
 
 @pytest.fixture

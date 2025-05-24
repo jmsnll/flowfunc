@@ -95,7 +95,7 @@ line-ending = "auto"
 
 [tool.uv.workspace]
 members = [
-    "examples/image_processing_daily",
+    "examples/*",
 ]
 
 [dependency-groups]

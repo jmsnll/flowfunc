@@ -9,6 +9,8 @@ import yaml
 class WorkflowYAML:
     def __init__(self, path: Path | str) -> None:
         self._path = Path(path)
+        if not self._path.exists():
+            raise FileNotFoundError(self._path.as_posix())
         self._data: dict[str, Any] | None = None
 
     @property

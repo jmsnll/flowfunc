@@ -4,11 +4,11 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = [
+dependencies = []
+
+[dependency-groups]
+example = [
     "numpy>=2.2.6",
     "pipefunc[all]>=0.76.0",
     "scikit-image>=0.25.2",
 ]
-
-[dependency-groups]
-dev = []

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import tomllib
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 from tomlkit.toml_document import TOMLDocument
 

@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
-from tomlkit import document, table
+from tomlkit import document
+from tomlkit import table
 
-from pipeflow.config.config_source import (
-    ConfigSource,
-    PropertyNotFoundError,
-    drop_empty_config_category,
-)
+from pipeflow.config.config_source import ConfigSource
+from pipeflow.config.config_source import PropertyNotFoundError
+from pipeflow.config.config_source import drop_empty_config_category
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

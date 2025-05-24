@@ -2,11 +2,13 @@ import logging
 import os
 import re
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 from pipeflow.config.file_config_source import FileConfigSource
 from pipeflow.env import get_prefix_env
-from pipeflow.locations import CONFIG_DIR, data_dir
+from pipeflow.locations import CONFIG_DIR
+from pipeflow.locations import data_dir
 from pipeflow.toml import TOMLFile
 
 logger = logging.getLogger(__name__)

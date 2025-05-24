@@ -1,9 +1,12 @@
-import numpy as np
-from skimage import data, filters, measure, io
-from skimage.color import rgb2gray
-from skimage.segmentation import find_boundaries
 import glob
 import os
+
+import numpy as np
+from skimage import filters
+from skimage import io
+from skimage import measure
+from skimage.color import rgb2gray
+from skimage.segmentation import find_boundaries
 
 
 def load_images_from_directory(directory_path: str, glob_pattern: str) -> list:

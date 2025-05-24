@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
+from typing import ClassVar
 
 from cleo.helpers import argument
 
@@ -26,7 +27,7 @@ class GraphCommand(Command):
     def handle(self) -> int:
         spec = WorkflowYAML(self.argument("file"))
         workflow = Workflow.from_dict(spec.data)
-        # workflow.visualize(backend="matplotlib")
+        workflow.visualize_matplotlib()
         workflow.print_documentation()
         workflow.info(print_table=True)
         # workflow.run(output_name="aggregate_results.summary", kwargs={"full_output": True})
