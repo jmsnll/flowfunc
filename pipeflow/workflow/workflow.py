@@ -17,7 +17,7 @@ class Workflow(pipefunc.Pipeline):
         for step in data.get("spec", {}).get("steps", []):
             step = PipeflowFunc.from_dict(step)
             functions.append(step)
-        return cls(functions)
+        return pipefunc.Pipeline(functions)
 
 
 class PipeflowFunc(pipefunc.PipeFunc):
@@ -42,7 +42,6 @@ class PipeflowFunc(pipefunc.PipeFunc):
             "cache",
             "mapspec",
             "scope",
-            "variant",
         }
         for key, value in options_yaml.items():
             if key not in supported_pipefunc_constructor_args:
@@ -55,7 +54,7 @@ class PipeflowFunc(pipefunc.PipeFunc):
         return constructor_args
 
     @classmethod
-    def from_dict(cls, definition: dict):
+    def from_dict(cls, definition: dict) -> pipefunc.PipeFunc:
         """
         Validates the 'inputs' defined in the step definition against the
         signature of the specified Python function.
@@ -112,30 +111,6 @@ class PipeflowFunc(pipefunc.PipeFunc):
                 f"'pipefunc_options' field for function '{function_fqn}' {step_id_info} must be an object (dictionary), "
                 f"but found type {type(spec_inputs_config).__name__}."
             )
-        spec_pipefunc_options = set(spec_inputs_config.keys())
-
-        # Check for discrepancies
-        extra_keys_in_spec = spec_pipefunc_options - function_param_names
-        missing_keys_in_spec = function_param_names - spec_pipefunc_options
-
-        if extra_keys_in_spec or missing_keys_in_spec:
-            error_messages = []
-            if extra_keys_in_spec:
-                error_messages.append(
-                    f"  - Defined in pipeline spec 'pipefunc_options' but not found in function signature: {sorted(list(extra_keys_in_spec))}"
-                )
-            if missing_keys_in_spec:
-                error_messages.append(
-                    f"  - Function parameters not declared as keys in pipeline spec 'pipefunc_options': {sorted(list(missing_keys_in_spec))}"
-                )
-
-            full_error_message = (
-                f"Input mismatch for function '{function_fqn}' {step_id_info}:\n"
-                + "\n".join(error_messages)
-                + f"\n  Function signature's named parameters: {sorted(list(function_param_names)) if function_param_names else 'None'}"
-                + f"\n  Pipeline spec's declared pipefunc_options keys: {sorted(list(spec_pipefunc_options)) if spec_pipefunc_options else 'None'}"
-            )
-            raise PipelineBuildError(full_error_message)
 
         logger.info(
             f"Input validation passed for function '{function_fqn}' {step_id_info}."
@@ -148,7 +123,11 @@ class PipeflowFunc(pipefunc.PipeFunc):
         # Create and return an instance of cls (PipeflowFunc)
         # This calls pipefunc.PipeFunc.__init__(self, func, **constructor_kwargs)
         try:
-            return cls(func=callable_obj, **constructor_kwargs)
+            kv_pair_strings = [f'{k}="{v}"' for k, v in constructor_kwargs.items()]
+            print(
+                f"PipeFunc({str(callable_obj.__name__)}, {", ".join(kv_pair_strings)})"
+            )
+            return pipefunc.PipeFunc(func=callable_obj, **constructor_kwargs)
         except Exception as e:
             raise PipelineBuildError(
                 f"Failed to instantiate {cls.__name__} for '{function_fqn}' {step_id_info} "

@@ -9,3 +9,6 @@ dependencies = [
     "pipefunc[all]>=0.76.0",
     "scikit-image>=0.25.2",
 ]
+
+[dependency-groups]
+dev = []
