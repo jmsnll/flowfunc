@@ -10,9 +10,7 @@ from skimage.segmentation import find_boundaries
 
 
 def load_images_from_directory(directory_path: str, glob_pattern: str) -> list:
-    """
-    Loads images from a specified directory matching a glob pattern.
-    """
+    """Loads images from a specified directory matching a glob pattern."""
     image_paths = []
     # Handle multiple patterns if separated by comma
     patterns = [p.strip() for p in glob_pattern.split(",")]
@@ -34,9 +32,7 @@ def load_images_from_directory(directory_path: str, glob_pattern: str) -> list:
 
 
 def load_and_preprocess_image(image_item):  # Argument name 'image_item' matches mapspec
-    """
-    Converts an image to grayscale.
-    """
+    """Converts an image to grayscale."""
     print(
         f"Processing image of shape: {image_item.shape if hasattr(image_item, 'shape') else 'N/A'}"
     )
@@ -49,16 +45,12 @@ def load_and_preprocess_image(image_item):  # Argument name 'image_item' matches
 def segment_image(
     gray_image,
 ):  # Argument name 'gray_image' matches input from previous step
-    """
-    Segments the grayscale image.
-    """
+    """Segments the grayscale image."""
     return filters.sobel(gray_image)
 
 
 def extract_feature(segmented_image):
-    """
-    Extracts features from the segmented image.
-    """
+    """Extracts features from the segmented image."""
     # Ensure segmented_image is boolean for find_boundaries if it's float
     if not np.issubdtype(segmented_image.dtype, np.bool_):
         threshold = (
@@ -74,18 +66,13 @@ def extract_feature(segmented_image):
     return {"num_regions": num_regions}
 
 
-def classify_object(feature):
-    """
-    Classifies the object based on extracted features.
-    """
-    classification = "Complex" if feature["num_regions"] > 5 else "Simple"
-    return classification
+def classify_object(feature) -> str:
+    """Classifies the object based on extracted features."""
+    return "Complex" if feature["num_regions"] > 5 else "Simple"
 
 
 def aggregate_results(classification):  # Receives a list of classifications
-    """
-    Aggregates classification results.
-    """
+    """Aggregates classification results."""
     if not isinstance(classification, list):
         # This can happen if the pipeline is run with a single item not in a list
         # and mapspec wasn't fully engaged to produce a list.

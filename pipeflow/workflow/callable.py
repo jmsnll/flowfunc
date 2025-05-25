@@ -5,9 +5,7 @@ from pipeflow.workflow.exceptions import CallableImportError
 
 
 def import_callable(fqn: str) -> Callable:
-    """
-    Imports a callable (function or class) given its fully qualified name.
-    """
+    """Imports a callable (function or class) given its fully qualified name."""
     if not isinstance(fqn, str) or "." not in fqn:
         raise CallableImportError(
             f"Invalid fully qualified name: '{fqn}'. Must be a dot-separated string."

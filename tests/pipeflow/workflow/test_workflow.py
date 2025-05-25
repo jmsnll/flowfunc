@@ -74,9 +74,7 @@ def step_function(workflow_step_specification):
 
 @pytest.fixture
 def step_function_options(workflow_step_specification):
-    """
-    Returns the options from the standard base_workflow_config.
-    """
+    """Returns the options from the standard base_workflow_config."""
     return workflow_step_specification.get("options", {})
 
 
@@ -120,7 +118,7 @@ PARAMETRIZED_CHECKS = [
 
 
 @pytest.mark.parametrize(
-    "test_id, get_actual_value, get_expected_value",
+    ("test_id", "get_actual_value", "get_expected_value"),
     PARAMETRIZED_CHECKS,
     ids=[check[0] for check in PARAMETRIZED_CHECKS],
 )
@@ -131,7 +129,7 @@ def test_workflow_step_creation_with_standard_properties(
     test_id,
     get_actual_value,
     get_expected_value,
-):
+) -> None:
     actual_value = get_actual_value(step_function)
     expected_value = get_expected_value(
         workflow_step_specification, step_function_options
@@ -141,7 +139,7 @@ def test_workflow_step_creation_with_standard_properties(
 
 def test_workflow_step_creation_with_inconsistent_renames_for_inputs_check_raises_pipeline_build_error(
     workflow_step_specification,
-):
+) -> None:
     modified_config = copy.deepcopy(workflow_step_specification)
     modified_config["options"]["renames"] = {
         "text_to_be_made_bold": "hashed_text",
@@ -153,7 +151,7 @@ def test_workflow_step_creation_with_inconsistent_renames_for_inputs_check_raise
 
 def test_workflow_step_creation_with_scope_in_options_check_renames_values_are_prefixed(
     workflow_step_specification,
-):
+) -> None:
     modified_config = copy.deepcopy(workflow_step_specification)
     scope_name = "example_scope"
     modified_config["options"]["scope"] = scope_name
@@ -183,14 +181,14 @@ def test_workflow_step_creation_with_scope_in_options_check_renames_values_are_p
 
 def test_workflow_step_creation_check_is_valid_pipeline(
     workflow_step_specification,
-):
+) -> None:
     step_function = function.new_function_from_dict(workflow_step_specification)
     pipefunc.Pipeline([step_function]).validate()
 
 
 def test_workflow_creation_with_base_specification_check_initializes_all_steps_correctly(
     base_workflow_specification,
-):
+) -> None:
     workflow_instance = pipeline.new_from_yaml(base_workflow_specification)
 
     expected_steps_configs = base_workflow_specification.get("spec", {}).get(
@@ -231,11 +229,11 @@ SPEC_STRUCTURE_EDGE_CASES = [
 
 
 @pytest.mark.parametrize(
-    "config_modifier_func, case_description_id", SPEC_STRUCTURE_EDGE_CASES
+    ("config_modifier_func", "case_description_id"), SPEC_STRUCTURE_EDGE_CASES
 )
 def test_workflow_creation_on_spec_edge_cases_check_initializes_empty_workflow(
     base_workflow_specification, config_modifier_func, case_description_id
-):
+) -> None:
     modified_config = copy.deepcopy(base_workflow_specification)
 
     # Apply the modification to simulate the edge case

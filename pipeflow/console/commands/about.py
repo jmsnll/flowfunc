@@ -16,7 +16,7 @@ class AboutCommand(Command):
             textwrap.dedent(
                 f"""\
             <info>Pipeflow - A wrapper around pipefunc for managing workflows.
-            
+
             Version: {metadata.version("pipeflow")}
             </info>
             """

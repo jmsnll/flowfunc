@@ -2,7 +2,6 @@ import logging
 import os
 import re
 from copy import deepcopy
-from typing import TYPE_CHECKING
 from typing import Any
 
 from pipeflow.config.file_config_source import FileConfigSource
@@ -10,14 +9,12 @@ from pipeflow.env import get_prefix_env
 from pipeflow.locations import CONFIG_DIR
 from pipeflow.locations import data_dir
 from pipeflow.toml import TOMLFile
+from collections.abc import Callable
+from pipeflow.config.config_source import ConfigSource
 
 logger = logging.getLogger(__name__)
 _default_config = None
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from pipeflow.config.config_source import ConfigSource
 
 
 def boolean_validator(val: str) -> bool:
@@ -103,9 +100,7 @@ class Config:
         return min(default_max_workers, int(desired_max_workers))
 
     def get(self, setting_name: str, default: Any = None) -> Any:
-        """
-        Retrieve a setting value.
-        """
+        """Retrieve a setting value."""
         keys = setting_name.split(".")
 
         # Looking in the environment if the setting is set via a {ENV_PREFIX}_* environment variable
