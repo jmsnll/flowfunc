@@ -1,16 +1,39 @@
+import logging
+
 import pipefunc
 
 from pipeflow.utils.python import import_callable
 from pipeflow.workflow.exceptions import PipelineBuildError
 from pipeflow.workflow.schema import StepModel
 
+logger = logging.getLogger(__name__)
 
-def from_model(step_model: StepModel) -> pipefunc.PipeFunc:
+
+
+def from_model(step_model: StepModel, *, default_module: str | None = None) -> pipefunc.PipeFunc:
     """Create a `pipefunc.PipeFunc` from a `StepModel` instance."""
-    if not step_model.function:
-        raise ValueError(f"Function FQN is missing for step '{step_model.name}'.")
+    function_path = step_model.function
 
-    _callable = import_callable(step_model.function)
+    if not function_path:
+        if default_module and step_model.name:
+            function_path = f"{default_module}.{step_model.name}"
+            logger.info(  # Use info or debug level as appropriate
+                f"Step '{step_model.name}': 'function' not specified. Defaulting to '{function_path}' using default_module and step name."
+            )
+        else:
+            # Condition where defaulting is not possible
+            error_msg_parts = []
+            if not default_module:
+                error_msg_parts.append("no 'default_module' is specified in the workflow")
+            if not step_model.name:  # Should not happen if name is required in schema
+                error_msg_parts.append("'name' is missing for the step")
+
+            detail = " and ".join(error_msg_parts)
+            raise PipelineBuildError(
+                f"Step '{step_model.name or '(unnamed step)'}': 'function' is not specified and cannot be defaulted because {detail}."
+            )
+
+    _callable = import_callable(function_path)
 
     current_options = (
         step_model.options.model_dump(exclude_none=True) if step_model.options else {}
