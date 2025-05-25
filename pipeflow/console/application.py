@@ -118,6 +118,7 @@ class PipeflowConsole(BaseApplication):
         self, event: Event, event_name: str, _: EventDispatcher
     ) -> None:
         from pipeflow.console.logging.filters import PIPEFLOW_FILTER
+        from pipeflow.console.logging.filters import PIPEFUNC_FILTER
         from pipeflow.console.logging.io_formatter import IOFormatter
         from pipeflow.console.logging.io_handler import IOHandler
 
@@ -146,6 +147,7 @@ class PipeflowConsole(BaseApplication):
         # only log third-party packages when very verbose
         if not io.is_very_verbose():
             handler.addFilter(PIPEFLOW_FILTER)
+            handler.addFilter(PIPEFUNC_FILTER)
 
         for name in loggers:
             logger = logging.getLogger(name)
