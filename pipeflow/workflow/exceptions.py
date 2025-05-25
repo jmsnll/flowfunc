@@ -7,6 +7,10 @@ class WorkflowLoadError(PipeflowCoreError):
     pass
 
 
+class WorkflowSchemaValidationError(PipeflowCoreError):
+    pass
+
+
 class PipelineBuildError(PipeflowCoreError):
     pass
 
