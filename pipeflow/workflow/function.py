@@ -40,7 +40,7 @@ def _prepare_constructor_kwargs(step_definition: dict) -> dict:
     return constructor_args
 
 
-def new_function_from_dict(definition: dict) -> pipefunc.PipeFunc:
+def new_from_yaml(definition: dict) -> pipefunc.PipeFunc:
     """
     Validates the 'inputs' defined in the step definition against the
     signature of the specified Python function.
@@ -72,7 +72,7 @@ def new_function_from_dict(definition: dict) -> pipefunc.PipeFunc:
             f"Failed to import function '{function_fqn}' {step_id_info}: {e}"
         ) from e
 
-    spec_inputs_config = definition.get("options", {})
+    spec_inputs_config = definition.get("options", None)
     if not isinstance(spec_inputs_config, dict):
         # This should ideally be caught by schema validation earlier
         raise PipelineBuildError(

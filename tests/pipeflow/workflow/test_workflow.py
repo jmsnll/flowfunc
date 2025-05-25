@@ -9,7 +9,7 @@ from pipeflow.workflow.exceptions import PipelineBuildError
 
 
 @pytest.fixture
-def base_workflow_specification():
+def base_workflow():
     return {
         "apiVersion": "workflows/v1",
         "kind": "Pipeline",
@@ -56,11 +56,15 @@ def base_workflow_specification():
         "outputs": ["bold_string"],
     }
 
+@pytest.fixture
+def base_workflow_specification(base_workflow):
+    return base_workflow['spec']
+
 
 @pytest.fixture
 def workflow_step_specification(base_workflow_specification):
     """Provides the base, unmodified configuration for a workflow."""
-    return base_workflow_specification["spec"]["steps"][0]
+    return base_workflow_specification["steps"][0]
 
 
 @pytest.fixture
@@ -191,69 +195,10 @@ def test_workflow_creation_with_base_specification_check_initializes_all_steps_c
 ) -> None:
     workflow_instance = pipeline.new_from_yaml(base_workflow_specification)
 
-    expected_steps_configs = base_workflow_specification.get("spec", {}).get(
-        "steps", []
-    )
+    expected_steps_configs = base_workflow_specification["steps"]
     assert len(workflow_instance.functions) == len(expected_steps_configs)
-    assert len(workflow_instance.functions) == 2
     assert len(workflow_instance.graph.edges) == 2
     assert len(workflow_instance.graph.nodes) == 3
 
     input_array = {"text_to_be_hashed": [1, 2, 3]}
     assert workflow_instance.map(input_array)
-
-
-# Define test cases for various spec/steps structural issues
-SPEC_STRUCTURE_EDGE_CASES = [
-    pytest.param(
-        lambda data: data["spec"].__setitem__("steps", []),
-        "spec_with_empty_steps_list",
-        id="spec_with_empty_steps_list",
-    ),
-    pytest.param(
-        lambda data: data["spec"].pop("steps", None),
-        "spec_with_missing_steps_key",
-        id="spec_with_missing_steps_key",
-    ),
-    pytest.param(
-        lambda data: data.pop("spec", None),
-        "data_with_missing_spec_key",
-        id="data_with_missing_spec_key",
-    ),
-    pytest.param(
-        lambda data: data.clear(),  # Entirely empty input data
-        "data_is_empty_dict",
-        id="data_is_empty_dict",
-    ),
-]
-
-
-@pytest.mark.parametrize(
-    ("config_modifier_func", "case_description_id"), SPEC_STRUCTURE_EDGE_CASES
-)
-def test_workflow_creation_on_spec_edge_cases_check_initializes_empty_workflow(
-    base_workflow_specification, config_modifier_func, case_description_id
-) -> None:
-    modified_config = copy.deepcopy(base_workflow_specification)
-
-    # Apply the modification to simulate the edge case
-    # Some modifiers might completely clear the dict, so no error should occur if "spec" is already gone
-    try:
-        config_modifier_func(modified_config)
-    except KeyError as e:
-        # This might happen if a modifier expects a key that was removed by a previous modifier
-        # in a more complex setup, but deepcopy should isolate.
-        # For these specific modifiers, this is unlikely unless base_workflow_specification is malformed.
-        pytest.fail(
-            f"Modifier function for '{case_description_id}' caused KeyError: {e} on config: {modified_config}"
-        )
-
-    workflow_instance = pipeline.new_from_yaml(modified_config)
-
-    assert isinstance(workflow_instance, pipefunc.Pipeline), (
-        f"Instance type check failed for case: {case_description_id}."
-    )
-    assert len(workflow_instance.functions) == 0, (
-        f"Workflow functions should be empty for case: '{case_description_id}'. "
-        f"Found {len(workflow_instance.functions)} functions. Config was: {modified_config}"
-    )

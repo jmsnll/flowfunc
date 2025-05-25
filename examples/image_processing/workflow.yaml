@@ -18,7 +18,7 @@ spec:
     - name: "load_image_batch_from_disk"
       function: "examples.image_processing.main.load_images_from_directory"
       description: "Loads all images from a specified directory."
-      spec:
+      options:
         inputs:
           directory_path: "$global.image_directory"
           glob_pattern: "$global.image_glob_pattern"
@@ -27,7 +27,7 @@ spec:
     - name: "load_and_preprocess"
       function: "examples.image_processing.main.load_and_preprocess_image"
       description: "Converts an image from the batch to grayscale."
-      spec:
+      options:
         inputs:
           image_item: "image_item"
         output_name: "gray_image"
@@ -35,15 +35,15 @@ spec:
 
     - name: "segment"
       function: "examples.image_processing.main.segment_image"
-      spec:
+      options:
         inputs:
-        gray_image: "load_and_preprocess" # This refers to  the output "gray_image"
+          gray_image: "load_and_preprocess" # This refers to  the output "gray_image"
         output_name: "segmented_image"
         mapspec: "gray_image[n] -> segmented_image[n]"
 
     - name: "extract_features"
       function: "examples.image_processing.main.extract_feature"
-      spec:
+      options:
         inputs:
           segmented_image: "segment"
         output_name: "feature"
@@ -51,7 +51,7 @@ spec:
 
     - name: "classify"
       function: "examples.image_processing.main.classify_object"
-      spec:
+      options:
         inputs:
           feature: "extract_features"
         output_name: "classification"
@@ -59,7 +59,7 @@ spec:
 
     - name: "aggregate_results"
       function: "examples.image_processing.main.aggregate_results"
-      spec:
+      options:
         inputs:
           classification: "classify"
         output_name: "summary"

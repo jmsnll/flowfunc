@@ -4,8 +4,14 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import ClassVar
 
+import pipefunc
 from cleo.commands.command import Command as BaseCommand
 from cleo.exceptions import CleoValueError
+from cleo.helpers import argument
+from cleo.io.inputs.argument import Argument
+
+from pipeflow.workflow import pipeline
+from pipeflow.workflow.yaml import WorkflowYAML
 
 if TYPE_CHECKING:
     from pipeflow.app import Pipeflow
@@ -42,3 +48,23 @@ class Command(BaseCommand):
             return super().option(name)
         except CleoValueError:
             return default
+
+
+class WorkflowCommand(Command):
+
+    arguments: ClassVar[list[Argument]] = [
+        argument(
+            "workflow",
+            "The workflow file.",
+        )
+    ]
+
+    _workflow: pipefunc.Pipeline | None = None
+
+    @property
+    def workflow(self):
+        if self._workflow is None:
+            workflow_file = self.argument("workflow")
+            workflow_yaml = WorkflowYAML(workflow_file)
+            self._workflow = pipeline.new_from_yaml(workflow_yaml.spec)
+        return self._workflow
