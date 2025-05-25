@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 
 import yaml
 from pydantic import ValidationError
@@ -9,6 +8,10 @@ from pipeflow.core.exceptions import PipeflowCoreError
 from pipeflow.workflow.exceptions import WorkflowLoadError
 from pipeflow.workflow.exceptions import WorkflowSchemaValidationError
 from pipeflow.workflow.schema import PipeflowPipelineModel
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def load_from_dict(raw_data: dict) -> PipeflowPipelineModel:

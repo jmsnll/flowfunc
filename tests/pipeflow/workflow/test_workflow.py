@@ -79,7 +79,7 @@ def pipefunc_function_from_first_step(first_step_model: StepModel) -> pipefunc.P
     return function.from_model(first_step_model)
 
 
-def test_step_with_only_parameters(valid_workflow_dict):
+def test_step_with_only_parameters(valid_workflow_dict) -> None:
     """Test a step that gets its input from parameters, not wiring."""
     step_dict = {
         "name": "param_step",
@@ -94,7 +94,7 @@ def test_step_with_only_parameters(valid_workflow_dict):
     assert pf_func.output_name == "hashed_param_value"
 
 
-def test_step_with_various_options(valid_workflow_dict):
+def test_step_with_various_options(valid_workflow_dict) -> None:
     """Test a step with more PipefuncOptionsModel fields."""
     step_dict = {
         "name": "options_galore_step",
@@ -176,7 +176,7 @@ def test_pipeline_creation_from_model_initializes_correctly(
         pytest.fail(f"Pipeline execution failed in test: {e}")
 
 
-def test_pipeline_with_new_import_path(tmp_path, monkeypatch):
+def test_pipeline_with_new_import_path(tmp_path, monkeypatch) -> None:
     """Test pipeline using default_module for function resolution."""
     monkeypatch.syspath_prepend(str(tmp_path))
     helpers_dir = tmp_path / "custom_helpers"
@@ -212,7 +212,7 @@ def test_pipeline_with_new_import_path(tmp_path, monkeypatch):
     assert list(results["doubled_num"].output) == [2, 4, 6]
 
 
-def test_pipeline_with_various_pipeline_configs():
+def test_pipeline_with_various_pipeline_configs() -> None:
     """Test various pipeline_config settings."""
     spec_dict = {
         "pipeline_config": {

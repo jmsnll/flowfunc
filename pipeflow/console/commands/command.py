@@ -5,16 +5,16 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import ClassVar
 
-import pipefunc
 from cleo.commands.command import Command as BaseCommand
 from cleo.exceptions import CleoValueError
 from cleo.helpers import argument
-from cleo.io.inputs.argument import Argument
 
 from pipeflow.workflow import loader
 from pipeflow.workflow import pipeline
 
 if TYPE_CHECKING:
+    import pipefunc
+    from cleo.io.inputs.argument import Argument
     from pipeflow.app import Pipeflow
     from pipeflow.console.application import PipeflowConsole
 
