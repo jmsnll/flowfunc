@@ -28,7 +28,6 @@ class InitCommand(Command):
             return 1
 
         try:
-
             tool_table = self.pyproject.data.get("tool") or tomlkit.table()
             pipeflow_table = tool_table.get("pipeflow") or tomlkit.table()
 
