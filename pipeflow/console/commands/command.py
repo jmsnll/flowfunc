@@ -89,7 +89,7 @@ class WorkflowCommand(Command):
             workflow_arg = self.argument("workflow")
             workload_path = Path(workflow_arg)
             if not workload_path.exists():
-                self.io.line_error(
+                self.io.write_error_line(
                     f"<error>Workflow file not found: {workload_path}</error>"
                 )
                 self._workflow_model = None  # Ensure model is also None
@@ -99,7 +99,7 @@ class WorkflowCommand(Command):
                 self._workflow_model = loaded_model  # Store the model
                 self._workflow = pipeline.from_model(loaded_model.spec)
             except Exception as e:
-                self.io.line_error(
+                self.io.write_error_line(
                     f"<error>Failed to load or build workflow '{workload_path}': {e}</error>"
                 )
                 if self.io.is_debug() or self.io.is_very_verbose():
