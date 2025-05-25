@@ -95,6 +95,11 @@ line-ending = "auto"
 [tool.uv.workspace]
 members = ["examples/*"]
 
+
+[tool.pipeflow]
+source_directory = "src"
+workflows_directory = "workflows"
+
 [dependency-groups]
 dev = [
   "coverage>=7.8.2",

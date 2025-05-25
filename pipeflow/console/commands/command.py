@@ -9,6 +9,7 @@ from cleo.commands.command import Command as BaseCommand
 from cleo.exceptions import CleoValueError
 from cleo.helpers import argument
 
+from pipeflow.pyproject.toml import PyProjectTOML
 from pipeflow.workflow import loader
 from pipeflow.workflow import pipeline
 
@@ -25,6 +26,7 @@ class Command(BaseCommand):
     loggers: ClassVar[list[str]] = []
 
     _pipeflow: Pipeflow | None = None
+    _pyproject_toml: PyProjectTOML | None = None
 
     @property
     def pipeflow(self) -> Pipeflow:
@@ -32,6 +34,13 @@ class Command(BaseCommand):
             return self.get_application().pipeflow
 
         return self._pipeflow
+
+    @property
+    def pyproject(self) -> PyProjectTOML:
+        if self._pyproject_toml is None:
+            pyproject_path = Path.cwd() / "pyproject.toml"
+            self._pyproject_toml = PyProjectTOML(pyproject_path)
+        return self._pyproject_toml
 
     def set_pipeflow(self, pipeflow: Pipeflow) -> None:
         self._pipeflow = pipeflow
