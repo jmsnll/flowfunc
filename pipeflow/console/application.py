@@ -40,6 +40,7 @@ def load_command(name: str) -> Callable[[], Command]:
 
 COMMANDS = [
     "about",
+    "debug",
     "describe",
     "docs",
     "graph",

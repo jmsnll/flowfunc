@@ -52,6 +52,24 @@ class Command(BaseCommand):
         except CleoValueError:
             return default
 
+    def must_choose(
+        self,
+        question: str,
+        choices: list[str],
+        default: Any | None = None,
+        attempts: int | None = None,
+        multiple: bool = False,
+    ):
+        while not (
+            choice := self.choice(question, choices, default, attempts, multiple)
+        ):
+            self.line("You must make a choice to continue.", style="error")
+        return choice
+
+    @property
+    def no_interactive(self) -> bool:
+        return self.option("no_interactive", False)
+
 
 class WorkflowCommand(Command):
     arguments: ClassVar[list[Argument]] = [
