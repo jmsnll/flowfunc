@@ -56,9 +56,10 @@ def base_workflow():
         "outputs": ["bold_string"],
     }
 
+
 @pytest.fixture
 def base_workflow_specification(base_workflow):
-    return base_workflow['spec']
+    return base_workflow["spec"]
 
 
 @pytest.fixture

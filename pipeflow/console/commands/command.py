@@ -51,7 +51,6 @@ class Command(BaseCommand):
 
 
 class WorkflowCommand(Command):
-
     arguments: ClassVar[list[Argument]] = [
         argument(
             "workflow",

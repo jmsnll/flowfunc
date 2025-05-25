@@ -13,4 +13,3 @@ def project_root() -> Path:
 def examples_dir(project_root: Path) -> Path:
     """Returns the path to the examples/ directory."""
     return project_root / "examples"
-
