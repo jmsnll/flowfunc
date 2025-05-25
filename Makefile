@@ -15,7 +15,7 @@ help:
 	@echo ""
 	@echo "  install     create virtualenv (if needed) and sync dependencies using uv"
 	@echo "  clean       remove temporary files and the virtual environment"
-	@echo "  lint        run code linters (Ruff, MyPy, Bandit)"
+	@echo "  lint        run code linters"
 	@echo "  format      reformat code using Ruff"
 	@echo "  test        run all tests using Pytest"
 	@echo ""

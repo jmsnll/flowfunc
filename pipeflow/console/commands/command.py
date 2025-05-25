@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import ClassVar
 
 from cleo.commands.command import Command as BaseCommand
 from cleo.exceptions import CleoValueError
+from cleo.helpers import argument
+
+from pipeflow.workflow import loader
+from pipeflow.workflow import pipeline
 
 if TYPE_CHECKING:
+    import pipefunc
+    from cleo.io.inputs.argument import Argument
+
     from pipeflow.app import Pipeflow
     from pipeflow.console.application import PipeflowConsole
 
@@ -42,3 +50,22 @@ class Command(BaseCommand):
             return super().option(name)
         except CleoValueError:
             return default
+
+
+class WorkflowCommand(Command):
+    arguments: ClassVar[list[Argument]] = [
+        argument(
+            "workflow",
+            "The workflow file.",
+        )
+    ]
+
+    _workflow: pipefunc.Pipeline | None = None
+
+    @property
+    def workflow(self):
+        if self._workflow is None:
+            workload_path = Path(self.argument("workflow"))
+            workflow_model = loader.load_from_path(workload_path)
+            return pipeline.from_model(workflow_model.spec)
+        return self._workflow

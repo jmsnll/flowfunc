@@ -15,7 +15,7 @@ spec:
       default: "*.jpg,*.jpeg,*.png"
 
   steps:
-    - id: "load_image_batch_from_disk"
+    - name: "load_image_batch_from_disk"
       function: "examples.image_processing.main.load_images_from_directory"
       description: "Loads all images from a specified directory."
       inputs:
@@ -24,7 +24,7 @@ spec:
       options:
         output_name: "image_item"
 
-    - id: "load_and_preprocess"
+    - name: "load_and_preprocess"
       function: "examples.image_processing.main.load_and_preprocess_image"
       description: "Converts an image from the batch to grayscale."
       inputs:
@@ -33,15 +33,15 @@ spec:
         output_name: "gray_image"
         mapspec: "image_item[n] -> gray_image[n]"
 
-    - id: "segment"
+    - name: "segment"
       function: "examples.image_processing.main.segment_image"
       inputs:
-        gray_image: "load_and_preprocess" # This refers to the output "gray_image"
+        gray_image: "load_and_preprocess" # This refers to  the output "gray_image"
       options:
         output_name: "segmented_image"
         mapspec: "gray_image[n] -> segmented_image[n]"
 
-    - id: "extract_features"
+    - name: "extract_features"
       function: "examples.image_processing.main.extract_feature"
       inputs:
         segmented_image: "segment"
@@ -49,7 +49,7 @@ spec:
         output_name: "feature"
         mapspec: "segmented_image[n] -> feature[n]"
 
-    - id: "classify"
+    - name: "classify"
       function: "examples.image_processing.main.classify_object"
       inputs:
         feature: "extract_features"
@@ -57,7 +57,7 @@ spec:
         output_name: "classification"
         mapspec: "feature[n] -> classification[n]"
 
-    - id: "aggregate_results"
+    - name: "aggregate_results"
       function: "examples.image_processing.main.aggregate_results"
       inputs:
         classification: "classify"
