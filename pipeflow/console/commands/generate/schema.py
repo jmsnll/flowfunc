@@ -13,6 +13,7 @@ from pipeflow.workflow.schema import PipeflowPipelineModel
 
 class GenerateSchemaCommand(Command):
     """Generates the JSON schema for pipeflow workflow.yaml files."""
+
     name = "generate schema"
     description = "Generates and prints the JSON schema for workflow.yaml files."
 
@@ -62,12 +63,8 @@ class GenerateSchemaCommand(Command):
             if output_path_str:
                 output_path = Path(output_path_str)
                 try:
-                    output_path.parent.mkdir(
-                        parents=True, exist_ok=True
-                    )
-                    output_path.write_text(
-                        schema_json_str + "\n"
-                    )
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_text(schema_json_str + "\n")
                     self.line(
                         f"<info>JSON schema successfully saved to: {output_path}</info>"
                     )
