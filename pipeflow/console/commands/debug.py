@@ -10,9 +10,7 @@ from pipeflow.console.commands.command import WorkflowCommand
 
 class DebugCommand(Command):
     name = "debug"
-    description = (
-        "Interactively select and run commands with an example workflow."
-    )
+    description = "Interactively select and run commands with an example workflow."
     hidden = True
 
     @property
@@ -39,8 +37,7 @@ class DebugCommand(Command):
         workflow_files = list(examples_dir.rglob("workflow.yaml"))
         workflow_files.extend(list(examples_dir.rglob("*.workflow.yaml")))
 
-        unique_workflow_files = sorted(list(set(workflow_files)))
-        return unique_workflow_files
+        return sorted(set(workflow_files))
 
     def handle(self) -> int:
         self.line("<info>Pipeflow Debug Mode - Workflow Runner</info>")
@@ -56,7 +53,7 @@ class DebugCommand(Command):
                 # Ignore commands that can't be found or other errors during introspection
                 pass
 
-        commands_to_offer = sorted(list(set(command_names_to_offer)))
+        commands_to_offer = sorted(set(command_names_to_offer))
         if not commands_to_offer:
             self.line_error("<error>No supported commands available to debug.</error>")
             return 1

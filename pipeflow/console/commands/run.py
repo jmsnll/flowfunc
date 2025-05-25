@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import json
-from typing import Any  # Removed cast
+from typing import TYPE_CHECKING
+from typing import Any
 from typing import ClassVar
 
 from cleo.helpers import option
-from cleo.io.inputs.option import Option
 
 from pipeflow.console.commands.command import WorkflowCommand
+
+if TYPE_CHECKING:
+    from cleo.io.inputs.option import Option
 
 
 class RunCommand(WorkflowCommand):
@@ -141,7 +144,7 @@ class RunCommand(WorkflowCommand):
             )
             return 1
 
-        all_pipeline_input_names = pipeline_info.get("inputs", tuple())
+        all_pipeline_input_names = pipeline_info.get("inputs", ())
 
         user_inputs = self._load_user_inputs()
         if user_inputs is None:

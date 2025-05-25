@@ -11,7 +11,6 @@ from cleo.helpers import argument
 
 from pipeflow.workflow import loader
 from pipeflow.workflow import pipeline
-from pipeflow.workflow.schema import PipeflowPipelineModel
 
 if TYPE_CHECKING:
     import pipefunc
@@ -19,6 +18,7 @@ if TYPE_CHECKING:
 
     from pipeflow.app import Pipeflow
     from pipeflow.console.application import PipeflowConsole
+    from pipeflow.workflow.schema import PipeflowPipelineModel
 
 
 class Command(BaseCommand):
