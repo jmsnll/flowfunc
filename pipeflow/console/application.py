@@ -43,6 +43,7 @@ COMMANDS = [
     "debug",
     "describe",
     "docs",
+    "generate schema",
     "graph",
     "init",
     "new",
