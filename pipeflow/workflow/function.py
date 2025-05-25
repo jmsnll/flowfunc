@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 
 def _prepare_constructor_kwargs(step_definition: dict) -> dict:
     constructor_args = {}
-    options_yaml = step_definition.get("pipefunc_options", {})
+    options_yaml = step_definition.get("options", {})
     step_id_info = f"for step '{step_definition.get('id', 'N/A')}'"
 
     if not isinstance(options_yaml, dict):
         raise PipelineBuildError(
-            f"'pipefunc_options' {step_id_info} must be an object, found {type(options_yaml).__name__}."
+            f"'options' {step_id_info} must be an object, found {type(options_yaml).__name__}."
         )
 
     supported_pipefunc_constructor_args = {
@@ -32,7 +32,7 @@ def _prepare_constructor_kwargs(step_definition: dict) -> dict:
     for key, value in options_yaml.items():
         if key not in supported_pipefunc_constructor_args:
             logger.warning(
-                f"Unknown key '{key}' in 'pipefunc_options' {step_id_info}. It will be ignored."
+                f"Unknown key '{key}' in 'options' {step_id_info}. It will be ignored."
             )
             continue
         constructor_args[key] = value
@@ -72,11 +72,11 @@ def new_function_from_dict(definition: dict) -> pipefunc.PipeFunc:
             f"Failed to import function '{function_fqn}' {step_id_info}: {e}"
         ) from e
 
-    spec_inputs_config = definition.get("pipefunc_options", {})
+    spec_inputs_config = definition.get("options", {})
     if not isinstance(spec_inputs_config, dict):
         # This should ideally be caught by schema validation earlier
         raise PipelineBuildError(
-            f"'pipefunc_options' field for function '{function_fqn}' {step_id_info} must be an object (dictionary), "
+            f"'options' field for function '{function_fqn}' {step_id_info} must be an object (dictionary), "
             f"but found type {type(spec_inputs_config).__name__}."
         )
 

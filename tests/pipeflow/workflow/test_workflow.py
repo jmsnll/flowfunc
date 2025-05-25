@@ -26,7 +26,7 @@ def base_workflow_specification():
                     "function": "tests.pipeflow.workflow.helpers.md5_hash",
                     "description": "Calculates an MD5 hash of input data.",
                     "inputs": ["text_to_be_hashed"],
-                    "pipefunc_options": {
+                    "options": {
                         "output_name": "hashed_text",
                         "mapspec": "text_to_be_hashed[n] -> hashed_text[n]",
                         "defaults": {
@@ -41,7 +41,7 @@ def base_workflow_specification():
                     "function": "tests.pipeflow.workflow.helpers.markdown_make_bold",
                     "description": "Wraps the input text in asterix to make it appear as bold in markdown.",
                     "inputs": ["hashed_text"],
-                    "pipefunc_options": {
+                    "options": {
                         "output_name": "bold_string",
                         "mapspec": "hashed_text[n] -> bold_string[n]",
                         "profile": True,
@@ -58,26 +58,26 @@ def base_workflow_specification():
 
 
 @pytest.fixture
-def base_workflow_step_specification(base_workflow_specification):
+def workflow_step_specification(base_workflow_specification):
     """Provides the base, unmodified configuration for a workflow."""
     return base_workflow_specification["spec"]["steps"][0]
 
 
 @pytest.fixture
-def pipe_func(base_workflow_step_specification):
+def step_function(workflow_step_specification):
     """
     Returns a PipeflowFunc instance created from the
     standard base_workflow_config.
     """
-    return function.new_function_from_dict(base_workflow_step_specification)
+    return function.new_function_from_dict(workflow_step_specification)
 
 
 @pytest.fixture
-def pipe_func_options(base_workflow_step_specification):
+def step_function_options(workflow_step_specification):
     """
-    Returns the pipefunc_options from the standard base_workflow_config.
+    Returns the options from the standard base_workflow_config.
     """
-    return base_workflow_step_specification.get("pipefunc_options", {})
+    return workflow_step_specification.get("options", {})
 
 
 PARAMETRIZED_CHECKS = [
@@ -125,37 +125,38 @@ PARAMETRIZED_CHECKS = [
     ids=[check[0] for check in PARAMETRIZED_CHECKS],
 )
 def test_workflow_step_creation_with_standard_properties(
-    pipe_func,
-    base_workflow_step_specification,
-    pipe_func_options,
+    step_function,
+    workflow_step_specification,
+    step_function_options,
     test_id,
     get_actual_value,
     get_expected_value,
 ):
-    actual_value = get_actual_value(pipe_func)
+    actual_value = get_actual_value(step_function)
     expected_value = get_expected_value(
-        base_workflow_step_specification, pipe_func_options
+        workflow_step_specification, step_function_options
     )
     assert actual_value == expected_value, f"Check failed for property: {test_id}"
 
 
 def test_workflow_step_creation_with_inconsistent_renames_for_inputs_check_raises_pipeline_build_error(
-    base_workflow_step_specification,
+    workflow_step_specification,
 ):
-    modified_config = copy.deepcopy(base_workflow_step_specification)
-    if "renames" in modified_config["pipefunc_options"]:
-        del modified_config["pipefunc_options"]["renames"]
+    modified_config = copy.deepcopy(workflow_step_specification)
+    modified_config["options"]["renames"] = {
+        "text_to_be_made_bold": "hashed_text",
+    }
 
     with pytest.raises(PipelineBuildError):
         function.new_function_from_dict(modified_config)
 
 
 def test_workflow_step_creation_with_scope_in_options_check_renames_values_are_prefixed(
-    base_workflow_step_specification,
+    workflow_step_specification,
 ):
-    modified_config = copy.deepcopy(base_workflow_step_specification)
+    modified_config = copy.deepcopy(workflow_step_specification)
     scope_name = "example_scope"
-    modified_config["pipefunc_options"]["scope"] = scope_name
+    modified_config["options"]["scope"] = scope_name
 
     step_function = function.new_function_from_dict(modified_config)
 
@@ -181,9 +182,9 @@ def test_workflow_step_creation_with_scope_in_options_check_renames_values_are_p
 
 
 def test_workflow_step_creation_check_is_valid_pipeline(
-    base_workflow_step_specification,
+    workflow_step_specification,
 ):
-    step_function = function.new_function_from_dict(base_workflow_step_specification)
+    step_function = function.new_function_from_dict(workflow_step_specification)
     pipefunc.Pipeline([step_function]).validate()
 
 

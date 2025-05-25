@@ -21,7 +21,7 @@ spec:
       inputs:
         directory_path: "$global.image_directory"
         glob_pattern: "$global.image_glob_pattern"
-      pipefunc_options:
+      options:
         output_name: "image_item"
 
     - id: "load_and_preprocess"
@@ -29,7 +29,7 @@ spec:
       description: "Converts an image from the batch to grayscale."
       inputs:
         image_item: "image_item"
-      pipefunc_options:
+      options:
         output_name: "gray_image"
         mapspec: "image_item[n] -> gray_image[n]"
 
@@ -37,7 +37,7 @@ spec:
       function: "examples.image_processing.main.segment_image"
       inputs:
         gray_image: "load_and_preprocess" # This refers to the output "gray_image"
-      pipefunc_options:
+      options:
         output_name: "segmented_image"
         mapspec: "gray_image[n] -> segmented_image[n]"
 
@@ -45,7 +45,7 @@ spec:
       function: "examples.image_processing.main.extract_feature"
       inputs:
         segmented_image: "segment"
-      pipefunc_options:
+      options:
         output_name: "feature"
         mapspec: "segmented_image[n] -> feature[n]"
 
@@ -53,7 +53,7 @@ spec:
       function: "examples.image_processing.main.classify_object"
       inputs:
         feature: "extract_features"
-      pipefunc_options:
+      options:
         output_name: "classification"
         mapspec: "feature[n] -> classification[n]"
 
@@ -61,7 +61,7 @@ spec:
       function: "examples.image_processing.main.aggregate_results"
       inputs:
         classification: "classify"
-      pipefunc_options:
+      options:
         output_name: "summary"
 
   pipeline_outputs:

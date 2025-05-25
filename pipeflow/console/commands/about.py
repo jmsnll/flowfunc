@@ -17,7 +17,7 @@ class AboutCommand(Command):
                 f"""\
             <info>Pipeflow - A wrapper around pipefunc for managing workflows.
             
-            Version: {metadata.version('pipeflow')}
+            Version: {metadata.version("pipeflow")}
             </info>
             """
             )

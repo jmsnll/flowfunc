@@ -85,7 +85,6 @@ class BasePyProjectTOML:
 
 
 class PyProjectTOML(BasePyProjectTOML):
-
     def __init__(self, path: Path) -> None:
         super().__init__(path)
         self._toml_file = TOMLFile(path=path)
