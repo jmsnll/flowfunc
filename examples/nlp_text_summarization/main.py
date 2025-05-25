@@ -3,15 +3,12 @@ import numpy as np
 from nltk.probability import FreqDist
 from nltk.tokenize import sent_tokenize
 from nltk.tokenize import word_tokenize
-from pipefunc import Pipeline
-from pipefunc import pipefunc
 
 nltk.download("punkt_tab", quiet=True)
 nltk.download("stopwords", quiet=True)
 
 
 # Step 1: Text Tokenization
-@pipefunc(output_name="tokens", mapspec="text[n] -> tokens[n]")
 def tokenize_text(text):
     from nltk.corpus import stopwords
 
@@ -24,7 +21,6 @@ def tokenize_text(text):
 
 
 # Step 2: Keyword Extraction
-@pipefunc(output_name="keywords", mapspec="tokens[n] -> keywords[n]")
 def extract_keywords(tokens):
     freq_dist = FreqDist(tokens)
     common_keywords = freq_dist.most_common(5)
@@ -32,7 +28,6 @@ def extract_keywords(tokens):
 
 
 # Step 3: Summary Generation
-@pipefunc(output_name="summary", mapspec="text[n], keywords[n] -> summary[n]")
 def generate_summary(text, keywords):
     sentences = sent_tokenize(text)
     important_sentences = [
@@ -44,7 +39,6 @@ def generate_summary(text, keywords):
 
 
 # Step 4: Sentiment Analysis
-@pipefunc(output_name="sentiment", mapspec="summary[n] -> sentiment[n]")
 def analyze_sentiment(summary):
     # Simplified sentiment analysis: More positive words = Positive sentiment
     positive_words = {"good", "great", "excellent", "positive", "fortunate"}
@@ -59,7 +53,6 @@ def analyze_sentiment(summary):
 
 
 # Step 5: Summarization Result Aggregation
-@pipefunc(output_name="result_summary")
 def aggregate_summarization(sentiment):
     # Convert the sentiment masked array to a list
     sentiment_list = np.array(sentiment).tolist()
@@ -74,26 +67,3 @@ def aggregate_summarization(sentiment):
         "Negative": negative_count,
         "Neutral": neutral_count,
     }
-
-
-# Create the pipeline
-pipeline_sentiment = Pipeline(
-    [
-        tokenize_text,
-        extract_keywords,
-        generate_summary,
-        analyze_sentiment,
-        aggregate_summarization,
-    ],
-)
-
-# Example texts to summarize
-texts = [
-    "The movie was excellent! The performances were outstanding, and the plot was captivating.",
-    "The movie was bad and boring. I found it dull and slow with no gripping moments.",
-    "An alright film with a good sense of humor but lacking depth in character development.",
-]
-
-# Run the pipeline on texts
-results_summary = pipeline_sentiment.map({"text": texts}, parallel=True)
-print("Summarization Sentiment Summary:", results_summary["result_summary"].output)
