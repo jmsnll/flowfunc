@@ -7,7 +7,9 @@ from pipeflow.workflow.schema import PipelineSpecModel
 def from_model(spec: PipelineSpecModel) -> pipefunc.Pipeline:
     functions = []
     for step_model_instance in spec.steps:
-        pf_function = workflow_function.from_model(step_model_instance, default_module=spec.default_module)
+        pf_function = workflow_function.from_model(
+            step_model_instance, default_module=spec.default_module
+        )
         functions.append(pf_function)
 
     pipeline_constructor_args = {}
