@@ -160,12 +160,12 @@ def test_workflow_step_creation_with_scope_in_options_check_renames_values_are_p
 
     step_function = function.new_function_from_dict(modified_config)
 
-    assert (
-        step_function.renames is not None
-    ), "Instance 'renames' attribute should exist."
-    assert (
-        len(step_function.renames) > 0
-    ), "Instance 'renames' attribute should not be empty for this check."
+    assert step_function.renames is not None, (
+        "Instance 'renames' attribute should exist."
+    )
+    assert len(step_function.renames) > 0, (
+        "Instance 'renames' attribute should not be empty for this check."
+    )
 
     all_renamed_values_are_scoped = True
     failed_renames = {}
@@ -252,9 +252,9 @@ def test_workflow_creation_on_spec_edge_cases_check_initializes_empty_workflow(
 
     workflow_instance = pipeline.new_from_yaml(modified_config)
 
-    assert isinstance(
-        workflow_instance, pipefunc.Pipeline
-    ), f"Instance type check failed for case: {case_description_id}."
+    assert isinstance(workflow_instance, pipefunc.Pipeline), (
+        f"Instance type check failed for case: {case_description_id}."
+    )
     assert len(workflow_instance.functions) == 0, (
         f"Workflow functions should be empty for case: '{case_description_id}'. "
         f"Found {len(workflow_instance.functions)} functions. Config was: {modified_config}"

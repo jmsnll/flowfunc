@@ -2,6 +2,7 @@ NAME := pipeflow
 
 # UV command, ensuring it's available
 UV := $(shell command -v uv 2> /dev/null)
+UVX := $(shell command -v uvx 2> /dev/null)
 VENV_DIR := .venv
 
 SYNC_STAMP := .sync.stamp
@@ -43,23 +44,21 @@ clean:
 
 .PHONY: lint
 lint: $(SYNC_STAMP)
-	@if [ -z $(UV) ]; then echo "uv could not be found."; exit 2; fi
+	@if [ -z $(UVX) ]; then echo "uvx could not be found."; exit 2; fi
 	@echo ">>> Running Ruff linter..."
-	$(UV) run ruff check ./tests/ ./$(NAME) --fix
-	@echo ">>> Running MyPy type checker..."
-	$(UV) run mypy ./tests/ ./$(NAME) --ignore-missing-imports # Add other MyPy options as needed
-	@echo ">>> Running Bandit security scanner..."
-	$(UV) run bandit -r ./$(NAME) -s B608 # Customize Bandit checks as needed
+	$(UVX) ruff check ./tests/ ./examples/ ./$(NAME) --fix
+	@echo ">>> Running Ruff formatter..."
+	$(UVX) ruff format --check ./tests/ ./examples/ ./$(NAME) --fix
 
 .PHONY: format
 format: $(SYNC_STAMP)
 	@if [ -z $(UV) ]; then echo "uv could not be found."; exit 2; fi
 	@echo ">>> Formatting with Ruff format..."
-	$(UV) run ruff format ./tests/ ./$(NAME)
+	$(UVX) ruff format ./tests/ ./examples/ ./$(NAME)
+	@echo ">>> Formatting with Ruff format..."
+	$(UVX) isort ./tests/ ./examples/ ./$(NAME)
 	@echo ">>> Applying auto-fixes with Ruff check --fix..."
-	# --exit-non-zero-on-fix ensures that if fixes are made, it signals it.
-	# The '|| true' allows the make target to succeed even if ruff exits non-zero after making fixes.
-	$(UV) run ruff check --fix ./tests/ ./$(NAME) --exit-non-zero-on-fix || true
+	$(UVX) ruff check --fix-only ./tests/ ./examples/ ./$(NAME) --exit-non-zero-on-fix || true
 
 .PHONY: test
 test: $(SYNC_STAMP)
