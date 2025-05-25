@@ -1,0 +1,75 @@
+name: Pipeflow CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  build_and_test:
+    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.13', '3.14']
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv (Python Packager and Resolver)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          # Add uv to the GITHUB_PATH for subsequent steps
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          echo "uv version: $(uv --version)"
+        # Consider using an official Astral action for uv if/when available and preferred.
+
+      - name: Create virtual environment and install dependencies
+        id: install-deps
+        run: |
+          uv venv .venv --python ${{ steps.setup-python.outputs.python-path }} # Use the specific Python from setup-python
+          echo "source .venv/bin/activate" >> $GITHUB_ENV # Make venv active for subsequent steps
+          # Assuming dev/test dependencies (ruff, mypy, pytest, pytest-cov, PyYAML, jsonschema)
+          # are in pyproject.toml under [project.optional-dependencies], e.g., "dev" or "test".
+          # Using --all-extras is a common way to get all optional groups.
+          # If your uv.lock includes dev dependencies, 'uv pip sync' might also work.
+          uv pip sync pyproject.toml --all-extras --python .venv/bin/python
+
+      - name: Lint and Format Check with Ruff
+        run: |
+          source $GITHUB_ENV # Activates the venv
+          echo "Running Ruff linter..."
+          uv run ruff check pipeflow/ tests/
+          echo "Checking formatting with Ruff..."
+          uv run ruff format --check pipeflow/ tests/
+
+      - name: Type Check with MyPy
+        run: |
+          source $GITHUB_ENV
+          echo "Running MyPy type checker..."
+          # Adjust paths and arguments as per your MyPy configuration
+          uv run mypy pipeflow/ tests/ --ignore-missing-imports
+          # Consider adding --strict or other flags you use locally.
+
+      - name: Run Tests with Pytest and Coverage
+        run: |
+          source $GITHUB_ENV
+          echo "Running Pytest..."
+          # --cov=pipeflow targets your main package for coverage.
+          # Outputs coverage reports to terminal and coverage.xml.
+          uv run pytest \
+            --cov=pipeflow \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            tests/
+          # Optional: Add --cov-fail-under=XX to enforce a minimum coverage percentage.
