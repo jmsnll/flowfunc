@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import ClassVar
@@ -10,8 +11,8 @@ from cleo.exceptions import CleoValueError
 from cleo.helpers import argument
 from cleo.io.inputs.argument import Argument
 
+from pipeflow.workflow import loader
 from pipeflow.workflow import pipeline
-from pipeflow.workflow.yaml import WorkflowYAML
 
 if TYPE_CHECKING:
     from pipeflow.app import Pipeflow
@@ -63,7 +64,7 @@ class WorkflowCommand(Command):
     @property
     def workflow(self):
         if self._workflow is None:
-            workflow_file = self.argument("workflow")
-            workflow_yaml = WorkflowYAML(workflow_file)
-            self._workflow = pipeline.new_from_yaml(workflow_yaml.spec)
+            workload_path = Path(self.argument("workflow"))
+            workflow_model = loader.load_from_path(workload_path)
+            return pipeline.from_model(workflow_model.spec)
         return self._workflow

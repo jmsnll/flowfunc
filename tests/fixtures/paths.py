@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import pytest
@@ -13,3 +14,13 @@ def project_root() -> Path:
 def examples_dir(project_root: Path) -> Path:
     """Returns the path to the examples/ directory."""
     return project_root / "examples"
+
+
+@pytest.fixture
+def sys_path_insert():
+    def _inner(path: Path):
+        sys.path.insert(0, str(path))
+        yield
+        # sys.path.pop(0)
+
+    return _inner
