@@ -15,6 +15,7 @@ from pipeflow.workflow import pipeline
 if TYPE_CHECKING:
     import pipefunc
     from cleo.io.inputs.argument import Argument
+
     from pipeflow.app import Pipeflow
     from pipeflow.console.application import PipeflowConsole
 

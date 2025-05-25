@@ -59,7 +59,9 @@ def test_workflow_yaml_check_model_valid(load_example_path: pytest.fixture) -> N
     _ = loader.load_from_path(file_path)
 
 
-def test_model_loads_valid_yaml(tmp_path: Path, minimal_valid_yaml_content: dict) -> None:
+def test_model_loads_valid_yaml(
+    tmp_path: Path, minimal_valid_yaml_content: dict
+) -> None:
     file_path = tmp_path / "valid_workflow.yaml"
     with open(file_path, "w") as f:
         yaml.dump(minimal_valid_yaml_content, f)

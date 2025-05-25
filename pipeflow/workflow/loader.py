@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 
 import yaml
 from pydantic import ValidationError
@@ -8,7 +9,6 @@ from pipeflow.core.exceptions import PipeflowCoreError
 from pipeflow.workflow.exceptions import WorkflowLoadError
 from pipeflow.workflow.exceptions import WorkflowSchemaValidationError
 from pipeflow.workflow.schema import PipeflowPipelineModel
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
