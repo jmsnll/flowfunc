@@ -25,8 +25,8 @@ def base_workflow_specification():
                     "id": "calculate_md5_hash",
                     "function": "tests.pipeflow.workflow.helpers.md5_hash",
                     "description": "Calculates an MD5 hash of input data.",
-                    "inputs": ["text_to_be_hashed"],
                     "options": {
+                        "inputs": ["text_to_be_hashed"],
                         "output_name": "hashed_text",
                         "mapspec": "text_to_be_hashed[n] -> hashed_text[n]",
                         "defaults": {
@@ -40,8 +40,8 @@ def base_workflow_specification():
                     "id": "make_bold",
                     "function": "tests.pipeflow.workflow.helpers.markdown_make_bold",
                     "description": "Wraps the input text in asterix to make it appear as bold in markdown.",
-                    "inputs": ["hashed_text"],
                     "options": {
+                        "inputs": ["hashed_text"],
                         "output_name": "bold_string",
                         "mapspec": "hashed_text[n] -> bold_string[n]",
                         "profile": True,
@@ -69,7 +69,7 @@ def step_function(workflow_step_specification):
     Returns a PipeflowFunc instance created from the
     standard base_workflow_config.
     """
-    return function.new_function_from_dict(workflow_step_specification)
+    return function.new_from_yaml(workflow_step_specification)
 
 
 @pytest.fixture
@@ -112,7 +112,7 @@ PARAMETRIZED_CHECKS = [
     (
         "mapspec_input_names_check_match_config_inputs_set",
         lambda pf: set(pf.mapspec.input_names),
-        lambda config, opts: set(config.get("inputs", set())),
+        lambda config, opts: set(opts.get("inputs", set())),
     ),
 ]
 
@@ -146,7 +146,7 @@ def test_workflow_step_creation_with_inconsistent_renames_for_inputs_check_raise
     }
 
     with pytest.raises(PipelineBuildError):
-        function.new_function_from_dict(modified_config)
+        function.new_from_yaml(modified_config)
 
 
 def test_workflow_step_creation_with_scope_in_options_check_renames_values_are_prefixed(
@@ -156,7 +156,7 @@ def test_workflow_step_creation_with_scope_in_options_check_renames_values_are_p
     scope_name = "example_scope"
     modified_config["options"]["scope"] = scope_name
 
-    step_function = function.new_function_from_dict(modified_config)
+    step_function = function.new_from_yaml(modified_config)
 
     assert step_function.renames is not None, (
         "Instance 'renames' attribute should exist."
@@ -182,7 +182,7 @@ def test_workflow_step_creation_with_scope_in_options_check_renames_values_are_p
 def test_workflow_step_creation_check_is_valid_pipeline(
     workflow_step_specification,
 ) -> None:
-    step_function = function.new_function_from_dict(workflow_step_specification)
+    step_function = function.new_from_yaml(workflow_step_specification)
     pipefunc.Pipeline([step_function]).validate()
 
 
