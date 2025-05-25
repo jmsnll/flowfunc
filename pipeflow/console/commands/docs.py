@@ -6,7 +6,7 @@ from typing import ClassVar
 from cleo.helpers import argument
 
 from pipeflow.console.commands.command import Command
-from pipeflow.workflow.workflow import Workflow
+from pipeflow.workflow import pipeline
 from pipeflow.workflow.yaml import WorkflowYAML
 
 if TYPE_CHECKING:
@@ -26,6 +26,6 @@ class DocsCommand(Command):
 
     def handle(self) -> int:
         spec = WorkflowYAML(self.argument("file"))
-        workflow = Workflow.from_dict(spec.data)
+        workflow = pipeline.new_from_yaml(spec.data)
         workflow.print_documentation()
         return 0

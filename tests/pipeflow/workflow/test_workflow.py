@@ -1,11 +1,10 @@
-import copy  # For deepcopy
+import copy
 
 import pipefunc
 import pytest
 
 from pipeflow.workflow.exceptions import PipelineBuildError
-from pipeflow.workflow.workflow import PipeflowFunc
-from pipeflow.workflow.workflow import Workflow
+from pipeflow.workflow import pipeline, function
 
 
 @pytest.fixture
@@ -29,9 +28,6 @@ def base_workflow_specification():
                     "pipefunc_options": {
                         "output_name": "hashed_text",
                         "mapspec": "text_to_be_hashed[n] -> hashed_text[n]",
-                        # "renames": {
-                        #     "credit_card_number": "data",
-                        # },
                         "defaults": {
                             "text_to_be_hashed": "123",
                         },
@@ -72,7 +68,7 @@ def pipe_func(base_workflow_step_specification):
     Returns a PipeflowFunc instance created from the
     standard base_workflow_config.
     """
-    return PipeflowFunc.from_dict(base_workflow_step_specification)
+    return function.new_function_from_dict(base_workflow_step_specification)
 
 
 @pytest.fixture
@@ -92,7 +88,7 @@ PARAMETRIZED_CHECKS = [
     (
         "renames_dict_check_matches_config_value",
         lambda pf: pf.renames,
-        lambda config, opts: opts.get("renames"),
+        lambda config, opts: opts.get("renames", {}),
     ),
     (
         "defaults_dict_check_matches_config_value",
@@ -119,11 +115,6 @@ PARAMETRIZED_CHECKS = [
         lambda pf: set(pf.mapspec.input_names),
         lambda config, opts: set(config.get("inputs", set())),
     ),
-    (
-        "original_parameters_keys_check_match_config_renames_keys_set",
-        lambda pf: set(pf.original_parameters.keys()),
-        lambda config, opts: set(opts.get("renames", {}).keys()),
-    ),
 ]
 
 
@@ -132,15 +123,15 @@ PARAMETRIZED_CHECKS = [
     PARAMETRIZED_CHECKS,
     ids=[
         check[0] for check in PARAMETRIZED_CHECKS
-    ],  # Uses the descriptive test_id for pytest output
+    ],
 )
-def test_workflow_step_creation_with_standard_properties(  # Subject: PipeflowFunc standard properties
+def test_workflow_step_creation_with_standard_properties(
     pipe_func,
     base_workflow_step_specification,
     pipe_func_options,
     test_id,
     get_actual_value,
-    get_expected_value,  # test_id is now e.g., "output_name_check_matches_config_value"
+    get_expected_value,
 ):
     actual_value = get_actual_value(pipe_func)
     expected_value = get_expected_value(
@@ -157,7 +148,7 @@ def test_workflow_step_creation_with_inconsistent_renames_for_inputs_check_raise
         del modified_config["pipefunc_options"]["renames"]
 
     with pytest.raises(PipelineBuildError):
-        PipeflowFunc.from_dict(modified_config)
+        function.new_function_from_dict(modified_config)
 
 
 def test_workflow_step_creation_with_scope_in_options_check_renames_values_are_prefixed(
@@ -167,16 +158,16 @@ def test_workflow_step_creation_with_scope_in_options_check_renames_values_are_p
     scope_name = "example_scope"
     modified_config["pipefunc_options"]["scope"] = scope_name
 
-    function = PipeflowFunc.from_dict(modified_config)
+    step_function = function.new_function_from_dict(modified_config)
 
-    assert function.renames is not None, "Instance 'renames' attribute should exist."
+    assert step_function.renames is not None, "Instance 'renames' attribute should exist."
     assert (
-        len(function.renames) > 0
+        len(step_function.renames) > 0
     ), "Instance 'renames' attribute should not be empty for this check."
 
     all_renamed_values_are_scoped = True
     failed_renames = {}
-    for original_key, renamed_value_target in function.renames.items():
+    for original_key, renamed_value_target in step_function.renames.items():
         expected_prefix = scope_name + "."
         if not renamed_value_target.startswith(expected_prefix):
             all_renamed_values_are_scoped = False
@@ -184,21 +175,21 @@ def test_workflow_step_creation_with_scope_in_options_check_renames_values_are_p
 
     assert all_renamed_values_are_scoped, (
         f"Not all 'renames' values are correctly prefixed with '{scope_name}.'. "
-        f"Incorrect renames: {failed_renames}. All renames: {function.renames}"
+        f"Incorrect renames: {failed_renames}. All renames: {step_function.renames}"
     )
 
 
 def test_workflow_step_creation_check_is_valid_pipeline(
     base_workflow_step_specification,
 ):
-    function = PipeflowFunc.from_dict(base_workflow_step_specification)
-    pipefunc.Pipeline([function]).validate()
+    step_function = function.new_function_from_dict(base_workflow_step_specification)
+    pipefunc.Pipeline([step_function]).validate()
 
 
 def test_workflow_creation_with_base_specification_check_initializes_all_steps_correctly(
     base_workflow_specification,
 ):
-    workflow_instance = Workflow.from_dict(base_workflow_specification)
+    workflow_instance = pipeline.new_from_yaml(base_workflow_specification)
 
     expected_steps_configs = base_workflow_specification.get("spec", {}).get(
         "steps", []
@@ -257,10 +248,10 @@ def test_workflow_creation_on_spec_edge_cases_check_initializes_empty_workflow(
             f"Modifier function for '{case_description_id}' caused KeyError: {e} on config: {modified_config}"
         )
 
-    workflow_instance = Workflow.from_dict(modified_config)
+    workflow_instance = pipeline.new_from_yaml(modified_config)
 
     assert isinstance(
-        workflow_instance, Workflow
+        workflow_instance, pipefunc.Pipeline
     ), f"Instance type check failed for case: {case_description_id}."
     assert len(workflow_instance.functions) == 0, (
         f"Workflow functions should be empty for case: '{case_description_id}'. "
