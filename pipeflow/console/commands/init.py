@@ -5,7 +5,6 @@ from pathlib import Path
 import tomlkit
 
 from pipeflow.console.commands.command import Command
-from pipeflow.pyproject.toml import PyProjectTOML
 
 
 class InitCommand(Command):
@@ -18,11 +17,10 @@ class InitCommand(Command):
         self.line("<info>Initializing Pipeflow project...</info>")
 
         project_dir = Path.cwd()
-        pyproject_path = project_dir / "pyproject.toml"
         workflows_dir = project_dir / "workflows"
         src_dir = project_dir / "src"
 
-        if not pyproject_path.exists():
+        if not self.pyproject.path.exists():
             self.line_error(
                 "<error>No pyproject.toml found in directory. "
                 "Please initialize it with your preferred package manager first.</error>"
@@ -30,8 +28,8 @@ class InitCommand(Command):
             return 1
 
         try:
-            project_toml = PyProjectTOML(pyproject_path)
-            tool_table = project_toml.data.get("tool") or tomlkit.table()
+
+            tool_table = self.pyproject.data.get("tool") or tomlkit.table()
             pipeflow_table = tool_table.get("pipeflow") or tomlkit.table()
 
             updated = False
@@ -44,11 +42,15 @@ class InitCommand(Command):
 
             if updated:
                 tool_table["pipeflow"] = pipeflow_table
-                project_toml.data["tool"] = tool_table
-                project_toml.save()
-                self.line("<info>Updated pyproject.toml with [tool.pipeflow] settings.</info>")
+                self.pyproject.data.add("tool", tool_table)
+                self.pyproject.save()
+                self.line(
+                    "<info>Updated pyproject.toml with [tool.pipeflow] settings.</info>"
+                )
             else:
-                self.line("<comment>[tool.pipeflow] section already exists with defaults. Skipping update.</comment>")
+                self.line(
+                    "<comment>[tool.pipeflow] section already exists with defaults. Skipping update.</comment>"
+                )
 
         except Exception as e:
             self.line_error(f"<error>Failed to update pyproject.toml: {e}</error>")
@@ -60,6 +62,10 @@ class InitCommand(Command):
                 self.line(f"<info>Created directory: {directory.name}/</info>")
 
         self.line("<info>Pipeflow project initialized successfully!</info>")
-        self.line(f"  - Manage your Python functions in the <comment>{src_dir.name}</comment> directory.")
-        self.line(f"  - Define your workflows in the <comment>{workflows_dir.name}</comment> directory.")
+        self.line(
+            f"  - Manage your Python functions in the <comment>{src_dir.name}</comment> directory."
+        )
+        self.line(
+            f"  - Define your workflows in the <comment>{workflows_dir.name}</comment> directory."
+        )
         return 0
