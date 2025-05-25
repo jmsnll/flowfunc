@@ -44,6 +44,7 @@ COMMANDS = [
     "describe",
     "docs",
     "graph",
+    "init",
     "run",
     "step",
     "validate",
