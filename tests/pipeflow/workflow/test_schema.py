@@ -15,7 +15,7 @@ def valid_yaml_content() -> dict:
         "apiVersion": "pipeflow.dev/v1alpha1",
         "kind": "Pipeline",
         "metadata": {"name": "test-pipeline", "version": "1.0"},
-        "spec": {"steps": [{"id": "step1", "function": "my.func"}]},
+        "spec": {"steps": [{"name": "step1", "function": "my.func"}]},
     }
 
 
@@ -25,7 +25,7 @@ def minimal_valid_yaml_content() -> dict:
         "apiVersion": "pipeflow.dev/v1alpha1",
         "kind": "Pipeline",
         "metadata": {"name": "minimal-pipeline"},
-        "spec": {"steps": [{"id": "minimal_step"}]},
+        "spec": {"steps": [{"name": "minimal_step"}]},
     }
 
 
@@ -33,7 +33,7 @@ def minimal_valid_yaml_content() -> dict:
 def invalid_schema_yaml_content_missing_required_spec() -> dict:
     return {
         "apiVersion": "pipeflow.dev/v1alpha1",
-        "kind": "Pipeline",
+        "kind": "Pipeline",`
         "metadata": {"name": "invalid-pipeline"},
         # 'spec' is missing, which is required by PipeflowPipelineModel
     }
@@ -45,7 +45,7 @@ def invalid_schema_yaml_content_wrong_type() -> dict:
         "apiVersion": "pipeflow.dev/v1alpha1",
         "kind": "Pipeline",
         "metadata": {"name": 123},  # Name should be string
-        "spec": {"steps": [{"id": "step1"}]},
+        "spec": {"steps": [{"name": "step1"}]},
     }
 
 
@@ -80,7 +80,7 @@ def test_model_loads_valid_yaml(tmp_path: Path, minimal_valid_yaml_content: dict
     assert isinstance(model_instance, PipeflowPipelineModel)
     assert model_instance.metadata.name == "minimal-pipeline"
     assert len(model_instance.spec.steps) == 1
-    assert model_instance.spec.steps[0].id == "minimal_step"
+    assert model_instance.spec.steps[0].name == "minimal_step"
 
 
 def test_model_caching(tmp_path: Path, minimal_valid_yaml_content: dict):
@@ -111,7 +111,7 @@ def test_model_malformed_yaml_raises_workflow_load_error(tmp_path: Path):
     file_path.write_text("apiVersion: v1\nkind: Pipeline\n  bad-indent: true")
 
     workflow = WorkflowYAML(file_path)
-    with pytest.raises(WorkflowLoadError, match="Invalid YAML syntax"):
+    with pytest.raises(WorkflowLoadError, match="is not a valid YAML file"):
         _ = workflow.model
 
 
