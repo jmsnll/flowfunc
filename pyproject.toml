@@ -2,14 +2,14 @@
 name = "pipeflow"
 version = "0.1.0"
 description = "A wrapper around pipefunc for managing workflows."
-authors = [{name="James Neill", email="hello@jamesneill.codes"}]
+authors = [{ name = "James Neill", email = "hello@jamesneill.codes" }]
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "cleo>=2.1.0",
-    "pipefunc[all]>=0.76.0",
-    "platformdirs>=4.3.8",
-    "tomlkit>=0.13.2",
+  "cleo>=2.1.0",
+  "pipefunc[all]>=0.76.0",
+  "platformdirs>=4.3.8",
+  "tomlkit>=0.13.2",
 ]
 
 [tool.isort]
@@ -28,35 +28,35 @@ indent-width = 4
 # Enable Pyflakes (F), pycodestyle error (E) and warning (W) codes, isort (I), and many other useful rule sets.
 # For all available rules: https://docs.astral.sh/ruff/rules/
 select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # Pyflakes
-    "I",  # isort
-    "N",  # pep8-naming
-    "D",  # pydocstyle (see pydocstyle section below for conventions)
-    "UP", # pyupgrade
-    "ANN",# flake8-annotations
-    "B",  # flake8-bugbear
-    "A",  # flake8-builtins
-    "C4", # flake8-comprehensions
-    "ERA",# eradicate (commented out code)
-    "ISC",# flake8-implicit-str-concat
-    "PT", # flake8-pytest-style
-    "Q",  # flake8-quotes (consistency for string quotes)
-    "RET",# flake8-return
-    "SIM",# flake8-simplify
-    "TID",# flake8-tidy-imports
-    "TCH",# flake8-type-checking (helps with imports for type checking)
-    "ARG",# flake8-unused-arguments
-    "PTH",# flake8-use-pathlib
-    "TRY",# tryceratops (exception handling best practices)
-    "RUF",# Ruff-specific rules
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # Pyflakes
+  "I",   # isort
+  "N",   # pep8-naming
+  "D",   # pydocstyle (see pydocstyle section below for conventions)
+  "UP",  # pyupgrade
+  "ANN", # flake8-annotations
+  "B",   # flake8-bugbear
+  "A",   # flake8-builtins
+  "C4",  # flake8-comprehensions
+  "ERA", # eradicate (commented out code)
+  "ISC", # flake8-implicit-str-concat
+  "PT",  # flake8-pytest-style
+  "Q",   # flake8-quotes (consistency for string quotes)
+  "RET", # flake8-return
+  "SIM", # flake8-simplify
+  "TID", # flake8-tidy-imports
+  "TCH", # flake8-type-checking (helps with imports for type checking)
+  "ARG", # flake8-unused-arguments
+  "PTH", # flake8-use-pathlib
+  "TRY", # tryceratops (exception handling best practices)
+  "RUF", # Ruff-specific rules
 ]
 ignore = [
-    "I001",  # Lets use isort to place imports on separate lines
-    "ANN401", # Dynamically typed expressions (Any) are disallowed in annotations
-    "D203",   # 1 blank line required before class docstring (conflicts with D211)
-    "D212",   # Multi-line docstring summary should start at the first line
+  "I001",   # Let's use isort to place imports on separate lines
+  "ANN401", # Dynamically typed expressions (Any) are disallowed in annotations
+  "D203",   # 1 blank line required before class docstring (conflicts with D211)
+  "D212",   # Multi-line docstring summary should start at the first line
 ]
 
 # Allow autofix for all enabled rules (when --fix is used)
@@ -65,18 +65,18 @@ unfixable = []
 
 # Exclude commonly excluded directories.
 exclude = [
-    ".eggs",
-    ".git",
-    ".mypy_cache",
-    ".nox",
-    ".ruff_cache",
-    ".venv",
-    "__pypackages__",
-    "_build",
-    "buck-out",
-    "build",
-    "dist",
-    "venv",
+  ".eggs",
+  ".git",
+  ".mypy_cache",
+  ".nox",
+  ".ruff_cache",
+  ".venv",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "venv",
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -93,15 +93,13 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.uv.workspace]
-members = [
-    "examples/*",
-]
+members = ["examples/*"]
 
 [dependency-groups]
 dev = [
-    "coverage>=7.8.2",
-    "mypy>=1.15.0",
-    "pre-commit>=4.2.0",
-    "pytest>=8.3.5",
-    "ruff>=0.11.11",
+  "coverage>=7.8.2",
+  "mypy>=1.15.0",
+  "pre-commit>=4.2.0",
+  "pytest>=8.3.5",
+  "ruff>=0.11.11",
 ]
