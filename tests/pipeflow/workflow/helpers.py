@@ -1,4 +1,3 @@
-
 def md5_hash(text_to_be_hashed):
     import hashlib
 

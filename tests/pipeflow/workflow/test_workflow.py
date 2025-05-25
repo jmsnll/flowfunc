@@ -3,8 +3,9 @@ import copy
 import pipefunc
 import pytest
 
+from pipeflow.workflow import function
+from pipeflow.workflow import pipeline
 from pipeflow.workflow.exceptions import PipelineBuildError
-from pipeflow.workflow import pipeline, function
 
 
 @pytest.fixture
@@ -121,9 +122,7 @@ PARAMETRIZED_CHECKS = [
 @pytest.mark.parametrize(
     "test_id, get_actual_value, get_expected_value",
     PARAMETRIZED_CHECKS,
-    ids=[
-        check[0] for check in PARAMETRIZED_CHECKS
-    ],
+    ids=[check[0] for check in PARAMETRIZED_CHECKS],
 )
 def test_workflow_step_creation_with_standard_properties(
     pipe_func,
@@ -160,7 +159,9 @@ def test_workflow_step_creation_with_scope_in_options_check_renames_values_are_p
 
     step_function = function.new_function_from_dict(modified_config)
 
-    assert step_function.renames is not None, "Instance 'renames' attribute should exist."
+    assert (
+        step_function.renames is not None
+    ), "Instance 'renames' attribute should exist."
     assert (
         len(step_function.renames) > 0
     ), "Instance 'renames' attribute should not be empty for this check."
