@@ -99,7 +99,7 @@ def test_step_with_various_options(valid_workflow_dict) -> None:
     step_dict = {
         "name": "options_galore_step",
         "function": "tests.pipeflow.workflow.helpers.md5_hash",
-        "inputs": {"text_to_hash": "$global.some_text"},
+        "inputs": {"text_to_be_hashed": "$global.some_text"},
         "options": {
             "output_name": "optioned_output",
             "cache": True,
