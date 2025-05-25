@@ -1,0 +1,69 @@
+apiVersion: pipeflow.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: text-analysis-sentiment-pipeline
+  version: "1.0.0"
+  description: "A pipeline to tokenize text, extract keywords, generate summaries, analyze sentiment, and aggregate results."
+spec:
+  default_module: text_analysis_funcs # Assumes your functions are in text_analysis_funcs.py
+
+  global_inputs:
+    text: # This name matches the key used in `pipeline_sentiment.map({"text": texts})`
+      description: "A list of input texts to process. Each text will be processed individually."
+      type: "array"
+      default:
+        - "The movie was excellent! The performances were outstanding, and the plot was captivating."
+        - "The movie was bad and boring. I found it dull and slow with no gripping moments."
+        - "An alright film with a good sense of humor but lacking depth in character development."
+
+  steps:
+    - name: "tokenize_input_text"
+      function: "examples.nlp_text_summarization.main.tokenize_text" # Uses default_module
+      description: "Tokenizes input text into words, removes stopwords and non-alphabetic characters."
+      inputs:
+        text: "$global.text" # Maps the 'text' argument of tokenize_text function to the global input 'text'
+      options:
+        output_name: "tokens"
+        mapspec: "text[n] -> tokens[n]" # Correctly refers to the function's argument name 'text'
+
+    - name: "extract_text_keywords"
+      function: "examples.nlp_text_summarization.main.extract_keywords"
+      description: "Extracts the most common keywords from tokenized text."
+      inputs:
+        tokens: "tokenize_input_text" # Uses output 'tokens' from 'tokenize_input_text' step
+                                      # pipeflow resolves this to tokenize_input_text.tokens
+      options:
+        output_name: "keywords"
+        mapspec: "tokens[n] -> keywords[n]"
+
+    - name: "generate_text_summary"
+      function: "examples.nlp_text_summarization.main.generate_summary"
+      description: "Generates a summary from the original text using extracted keywords."
+      inputs:
+        text: "$global.text"     # Function's 'text' arg comes from global 'text' input
+        keywords: "extract_text_keywords" # Function's 'keywords' arg comes from 'extract_text_keywords' step output
+      options:
+        output_name: "summary"
+        mapspec: "text[n], keywords[n] -> summary[n]"
+
+    - name: "analyze_text_sentiment"
+      function: "examples.nlp_text_summarization.main.analyze_sentiment"
+      description: "Analyzes the sentiment of the generated summary."
+      inputs:
+        summary: "generate_text_summary" # Uses output 'summary' from 'generate_text_summary' step
+      options:
+        output_name: "sentiment"
+        mapspec: "summary[n] -> sentiment[n]"
+
+    - name: "aggregate_sentiment_results"
+      function: "examples.nlp_text_summarization.main.aggregate_summarization"
+      description: "Aggregates the sentiment analysis results."
+      inputs:
+        sentiment: "analyze_text_sentiment" # Uses output 'sentiment' (which will be a list due to prior mapspec)
+                                            # from 'analyze_text_sentiment' step.
+      options:
+        output_name: "result_summary"
+        # No mapspec here as this function aggregates the list of sentiments.
+
+  pipeline_outputs:
+    - "aggregate_sentiment_results.result_summary" # Exposes the final aggregated summary as a pipeline output

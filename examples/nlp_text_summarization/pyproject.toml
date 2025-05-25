@@ -1,5 +1,5 @@
 [project]
-name = "image-processing"
+name = "nl-text-summarization"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -10,5 +10,5 @@ dependencies = []
 example = [
     "numpy>=2.2.6",
     "pipefunc[all]>=0.76.0",
-    "scikit-image>=0.25.2",
+    "nltk==3.9.1"
 ]
