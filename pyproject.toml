@@ -95,9 +95,9 @@ members = ["examples/*"]
 
 
 [tool.pipeflow]
-source_directory = "src"
-workflows_directory = "workflows"
-runs_directory = "runs"
+source_directory = "dev/src"
+workflows_directory = "dev/workflows"
+runs_directory = "dev/runs"
 
 [dependency-groups]
 dev = [

@@ -5,76 +5,116 @@ from pathlib import Path
 import tomlkit
 
 from pipeflow.console.commands.command import Command
+from pipeflow.pyproject.toml import PyProjectTOML
 
 
 class InitCommand(Command):
-    """Initializes a new Pipeflow project with a recommended directory structure and configuration."""
+    """Initializes a Pipeflow project by configuring pyproject.toml and creating standard directories."""
 
     name = "init"
-    description = "Initializes a new Pipeflow project (pyproject.toml, src, workflows)."
+    description = (
+        "Initializes a Pipeflow project: adds [tool.pipeflow] config to pyproject.toml, "
+        "and creates src/, workflows/, and runs/ directories."
+    )
+
+    DEFAULTS = {
+        "source_directory": "src",
+        "workflows_directory": "workflows",
+        "runs_directory": "runs",
+    }
 
     def handle(self) -> int:
         self.line("<info>Initializing Pipeflow project...</info>")
 
         project_dir = Path.cwd()
-        workflows_dir = project_dir / "workflows"
-        src_dir = project_dir / "src"
-        runs_dir = project_dir / "runs"
+        pyproject_path = project_dir / "pyproject.toml"
 
-        if not self.pyproject.path.exists():
-            self.line_error(
-                "<error>No pyproject.toml found in directory. "
-                "Please initialize it with your preferred package manager first.</error>"
-            )
+        pyproject = self._load_pyproject(pyproject_path)
+        if pyproject is None:
             return 1
 
-        try:
-            tool_table = self.pyproject.data.get("tool") or tomlkit.table()
-            pipeflow_table = tool_table.get("pipeflow") or tomlkit.table()
+        config = self._update_config(pyproject)
+        directories = self._resolve_directories(project_dir, config)
 
-            updated = False
-            if "source_directory" not in pipeflow_table:
-                pipeflow_table["source_directory"] = src_dir.name
-                updated = True
-            if "workflows_directory" not in pipeflow_table:
-                pipeflow_table["workflows_directory"] = workflows_dir.name
-                updated = True
-            if "runs_directory" not in pipeflow_table:
-                pipeflow_table["runs_directory"] = runs_dir.name
-                updated = True
+        self._create_directories(directories, project_dir)
+        self._summarize(directories, project_dir)
 
-            if updated:
-                tool_table["pipeflow"] = pipeflow_table
-                self.pyproject.data["tool"] = tool_table
-                self.pyproject.save()
-                self.line(
-                    "<info>Updated pyproject.toml with [tool.pipeflow] settings.</info>"
-                )
-            else:
-                self.line(
-                    "<comment>[tool.pipeflow] section already exists with defaults. Skipping update.</comment>"
-                )
-
-        except Exception as e:
-            self.line_error(f"<error>Failed to update pyproject.toml: {e}</error>")
-            import traceback
-
-            self.line_error(f"<error>Traceback: {traceback.format_exc()}</error>")
-            return 1
-
-        for directory in [workflows_dir, src_dir, runs_dir]:
-            if not directory.exists():
-                directory.mkdir(parents=True)
-                self.line(f"<info>Created directory: {directory.name}/</info>")
-
-        self.line("<info>Pipeflow project initialized successfully!</info>")
-        self.line(
-            f"  - Manage your Python functions in the <comment>{src_dir.name}</comment> directory."
-        )
-        self.line(
-            f"  - Define your workflows in the <comment>{workflows_dir.name}</comment> directory."
-        )
-        self.line(
-            f"  - View your workflow runs in the <comment>{runs_dir.name}</comment> directory."
-        )
         return 0
+
+    def _load_pyproject(self, path: Path) -> PyProjectTOML | None:
+        if not path.exists():
+            self.line_error(f"<error>No pyproject.toml found at {path}</error>")
+            self.line(
+                "<comment>Run 'poetry init' or 'uv init' to create one first.</comment>"
+            )
+            return None
+        try:
+            return PyProjectTOML(path)
+        except Exception as e:
+            self.line_error(f"<error>Failed to parse pyproject.toml: {e}</error>")
+            return None
+
+    def _update_config(self, pyproject: PyProjectTOML) -> dict[str, str]:
+        tool_table = pyproject.data.get("tool") or tomlkit.table()
+        pipeflow_table = tool_table.get("pipeflow") or tomlkit.table()
+
+        updated = False
+        for key, default in self.DEFAULTS.items():
+            if not pipeflow_table.get(key):
+                pipeflow_table[key] = default
+                updated = True
+
+        if updated:
+            tool_table["pipeflow"] = pipeflow_table
+            pyproject.data["tool"] = tool_table
+            try:
+                pyproject.save()
+                self.line(
+                    "<info>Updated pyproject.toml with [tool.pipeflow] defaults.</info>"
+                )
+            except Exception as e:
+                self.line_error(f"<error>Failed to save pyproject.toml: {e}</error>")
+        else:
+            self.line(
+                "<comment>[tool.pipeflow] already contains required config. Skipping update.</comment>"
+            )
+
+        return {key: pipeflow_table[key] for key in self.DEFAULTS}
+
+    def _resolve_directories(
+        self, project_dir: Path, config: dict[str, str]
+    ) -> dict[str, Path]:
+        return {
+            "Source": project_dir / config["source_directory"],
+            "Workflows": project_dir / config["workflows_directory"],
+            "Runs": project_dir / config["runs_directory"],
+        }
+
+    def _create_directories(
+        self, directories: dict[str, Path], project_dir: Path
+    ) -> None:
+        for label, path in directories.items():
+            try:
+                if not path.exists():
+                    path.mkdir(parents=True, exist_ok=True)
+                    self.line(
+                        f"<info>Created {label} directory: {path.relative_to(project_dir)}/</info>"
+                    )
+                elif not path.is_dir():
+                    self.line_error(
+                        f"<error>Path '{path.relative_to(project_dir)}' exists but is not a directory.</error>"
+                    )
+            except Exception as e:
+                self.line_error(
+                    f"<error>Failed to create {label} directory at '{path.relative_to(project_dir)}': {e}</error>"
+                )
+
+    def _summarize(self, directories: dict[str, Path], project_dir: Path) -> None:
+        self.line("\n<success>Pipeflow project initialized successfully!</success>")
+        for label, path in directories.items():
+            self.line(
+                f"  - {label} directory: <comment>{path.relative_to(project_dir)}/</comment>"
+            )
+        self.line(
+            "  - Create a workflow with: <fg=cyan>pipeflow new <your_bundle_name></>"
+        )
