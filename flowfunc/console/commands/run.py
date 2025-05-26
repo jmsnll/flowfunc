@@ -14,6 +14,7 @@ from cleo.io.inputs.option import Option
 from flowfunc import __version__ as flowfunc_version
 from flowfunc import locations
 from flowfunc.console.commands.command import WorkflowCommand
+from flowfunc.io.serializer import _SERIALIZERS
 from flowfunc.workflow.schema import FlowFuncPipelineModel
 
 PIPEFLOW_RUNS_DIR_NAME = "runs"
@@ -140,9 +141,10 @@ class RunCommand(WorkflowCommand):
         if cli_output_root := self.option("output-root"):
             global_runs_base_dir = Path(cli_output_root).resolve()
         else:
-            global_runs_base_dir = project_root / self.pyproject.data.get(
-                "flowfunc", {}
-            ).get("output_root_dir", PIPEFLOW_RUNS_DIR_NAME)
+            tool = self.pyproject.data.get("tool")
+            flowfunc = tool.get("flowfunc", {})
+            output_root_dir = flowfunc.get("runs_directory", PIPEFLOW_RUNS_DIR_NAME)
+            global_runs_base_dir = project_root / output_root_dir
 
         # Sanitize workflow name for directory creation
         workflow_name_sanitized = "".join(
@@ -151,7 +153,6 @@ class RunCommand(WorkflowCommand):
         ).strip("_")
 
         run_base_dir = global_runs_base_dir / workflow_name_sanitized / run_id
-
         # Determine specific output path for this workflow's explicitly saved artifacts
         # This considers workflow_model.spec.output_config
         workflow_outputs_base = run_base_dir / "outputs"
@@ -244,40 +245,11 @@ class RunCommand(WorkflowCommand):
                 actual_save_path = (workflow_outputs_save_dir / out_def.path).resolve()
 
                 try:
-                    actual_save_path.parent.mkdir(parents=True, exist_ok=True)
-
-                    # Basic serialization based on extension. Needs to be more robust.
-                    # TODO: Implement more serializers (pandas for csv/parquet, pickle, etc.)
-                    file_suffix = actual_save_path.suffix.lower()
-                    self.line(
-                        f"<comment>Attempting to save output '{out_def.name}' to '{actual_save_path}' (format: {file_suffix or 'unknown'})</comment>"
+                    saved_output_paths[out_def.name] = self.serialize_output(
+                        data_to_save,
+                        output_name=out_def.name,
+                        target_path=actual_save_path,
                     )
-
-                    if file_suffix == ".json":
-                        with open(actual_save_path, "w") as f:
-                            json.dump(data_to_save, f, indent=2, default=str)
-                    elif file_suffix == ".txt":
-                        with open(actual_save_path, "w") as f:
-                            f.write(str(data_to_save))
-                    elif file_suffix == ".pkl":
-                        import pickle
-
-                        with open(actual_save_path, "wb") as f:
-                            pickle.dump(data_to_save, f)
-                    # Add more elif for .csv (needs pandas), .parquet (needs pyarrow/fastparquet) etc.
-                    else:
-                        self.line_error(
-                            f"<warning>Cannot automatically serialize output '{out_def.name}' to unsupported extension '{file_suffix}' for path '{out_def.path}'. Data not saved by flowfunc.</warning>"
-                        )
-                        continue
-
-                    relative_saved_path = str(
-                        actual_save_path.relative_to(locations.project_root())
-                    )
-                    self.line(
-                        f"<info>Saved declared output '{out_def.name}' to '{relative_saved_path}'</info>"
-                    )
-                    saved_output_paths[out_def.name] = relative_saved_path
                 except Exception as e:
                     self.line_error(
                         f"<error>Failed to save declared output '{out_def.name}' to '{actual_save_path}': {e}</error>"
@@ -286,6 +258,35 @@ class RunCommand(WorkflowCommand):
 
                     self.io.write_error_line(traceback.format_exc())  # More debug info
         return saved_output_paths
+
+    def serialize_output(
+        self, data_to_save: Any, *, output_name: str, target_path: Path
+    ) -> Path:
+        file_suffix = target_path.suffix.lower()
+        relative_save_path = target_path.relative_to(locations.project_root())
+
+        if not (file_serializer := _SERIALIZERS.get(file_suffix)):
+            self.line_error(
+                f"<warning>Cannot automatically serialize output '{output_name}' to unsupported extension '{file_suffix}' for path '{target_path}'. Data not saved by flowfunc.</warning>"
+            )
+            return None
+
+        try:
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            self.line(
+                f"<comment>Attempting to save output '{output_name}' to '{target_path}' (format: {file_suffix or 'unknown'})</comment>"
+            )
+            file_serializer(data_to_save, target_path)
+            # Relative path logging would need project_root, or handle it in the command
+            self.line(
+                f"<info>Saved declared output '{output_name}' to '{relative_save_path}'</info>"
+            )
+        except Exception as e:
+            self.line_error(
+                f"<error>Failed to save declared output '{output_name}' to '{target_path}': {e}</error>"
+            )
+
+        return relative_save_path
 
     def _write_run_info(
         self,
