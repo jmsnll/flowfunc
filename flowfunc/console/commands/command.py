@@ -89,6 +89,7 @@ class WorkflowCommand(Command):
     ]
 
     _workflow: pipefunc.Pipeline | None = None
+    _workflow_path: Path | None = None
     _workflow_model: FlowFuncPipelineModel | None = None
 
     @property
@@ -106,6 +107,7 @@ class WorkflowCommand(Command):
             try:
                 loaded_model = loader.load_from_path(workload_path)
                 self._workflow_model = loaded_model  # Store the model
+                self._workflow_path = workload_path
                 self._workflow = pipeline.from_model(loaded_model.spec)
             except Exception as e:
                 self.io.write_error_line(

@@ -59,17 +59,6 @@ class PipelineOutputItem(BaseModel):  # New model for detailed output definition
         extra = "forbid"
 
 
-class PipelineOutputConfig(BaseModel):  # New model for output configuration
-    base_path_relative_to_workflow: bool | None = (
-        False  # If true, base_path is relative to workflow.yaml, else to project's flowfunc_runs
-    )
-    base_path: str | None = None  # e.g., "results" or "{workflow_bundle_name}/results"
-    # layout_pattern: str | None = None # For more complex layouts, e.g. "{step_name}/{output_name}.parquet"
-
-    class Config:
-        extra = "forbid"
-
-
 class PipelineConfigModel(BaseModel):
     validate_type_annotations: bool | None = None
     cache_type: CacheTypeEnum | None = None
@@ -86,7 +75,7 @@ class PipelineConfigModel(BaseModel):
         extra = "forbid"  # Corresponds to additionalProperties: false
 
 
-class GlobalInputDetailModel(BaseModel):
+class GlobalInputItem(BaseModel):
     description: str
     type: GlobalInputTypeEnum | None = None
     default: Any | None = None  # Value can be any valid JSON/YAML type
@@ -151,14 +140,9 @@ class PipelineSpecModel(BaseModel):
     pipeline_config: PipelineConfigModel | None = Field(
         default_factory=PipelineConfigModel
     )
-    global_inputs: dict[str, GlobalInputDetailModel] | None = Field(
-        default_factory=dict
-    )
+    global_inputs: dict[str, GlobalInputItem] | None = Field(default_factory=dict)
     steps: list[StepModel] = Field(..., min_length=1)  # Pydantic v2 uses min_length
-    pipeline_outputs: list[str | PipelineOutputItem] = Field(
-        default_factory=list
-    )  # MODIFIED
-    output_config: PipelineOutputConfig | None = None  # ADDED
+    pipeline_outputs: list[str | PipelineOutputItem] = Field(default_factory=list)
 
     class Config:
         extra = "forbid"
@@ -231,3 +215,15 @@ class RunInfoModel(BaseModel):
 
     class Config:
         pass
+
+    def save_run_info(self, run_dir: Path) -> None:
+        """Saves the RunInfoModel to a 'run_info.json' file in the run_directory."""
+        run_info_file_path = run_dir / "run_info.json"
+        try:
+            run_info_file_path.parent.mkdir(parents=True, exist_ok=True)
+            run_info_file_path.write_text(self.model_dump_json(indent=2))
+        except Exception as e:
+            run_id = run_dir.parts[-1]
+            raise Exception(
+                f"Failed to write {run_info_file_path.name} for run {run_id}"
+            ) from e

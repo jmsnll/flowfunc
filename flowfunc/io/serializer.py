@@ -22,8 +22,12 @@ def serialize_pickle(data: Any, path: Path) -> None:
         pickle.dump(data, f)
 
 
-_SERIALIZERS: dict[str, Callable[[Any, Path], None]] = {
-    ".json": serialize_json,
-    ".txt": serialize_text,
-    ".pkl": serialize_pickle,
-}
+def lookup(key: str | Path) -> Callable[[Any, Path], None] | None:
+    """Returns the appropriate serializer function based on the file extension."""
+    serializers: dict[str, Callable[[Any, Path], None]] = {
+        ".json": serialize_json,
+        ".txt": serialize_text,
+        ".pkl": serialize_pickle,
+    }
+    suffix = key.suffix if isinstance(key, Path) else key
+    return serializers.get(suffix.lower())
