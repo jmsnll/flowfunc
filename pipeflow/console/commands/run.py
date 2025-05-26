@@ -135,7 +135,7 @@ class RunCommand(WorkflowCommand):
         self, run_id: str, workflow_model: PipeflowPipelineModel
     ) -> tuple[Path, Path, Path] | None:
         """Creates run directory structure and returns (run_base_dir, outputs_dir, cache_dir_for_pipefunc)."""
-        project_root = locations.get_project_root()
+        project_root = locations.project_root()
 
         if cli_output_root := self.option("output-root"):
             global_runs_base_dir = Path(cli_output_root).resolve()
@@ -272,7 +272,7 @@ class RunCommand(WorkflowCommand):
                         continue
 
                     relative_saved_path = str(
-                        actual_save_path.relative_to(locations.get_project_root())
+                        actual_save_path.relative_to(locations.project_root())
                     )
                     self.line(
                         f"<info>Saved declared output '{out_def.name}' to '{relative_saved_path}'</info>"
@@ -302,7 +302,7 @@ class RunCommand(WorkflowCommand):
         workflow_file_abs_path: Path,
     ):
         run_info_path = run_base_dir / "run_info.json"
-        project_root = locations.get_project_root()
+        project_root = locations.project_root()
         run_metadata = {
             "run_id": run_id,
             "pipeflow_version": pipeflow_version.__version__,

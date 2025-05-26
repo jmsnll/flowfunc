@@ -23,7 +23,7 @@ def data_dir() -> Path:
     return user_data_path(APP_NAME, appauthor=False, roaming=True)
 
 
-def get_project_root(markers=None) -> Path:
+def project_root(markers=None) -> Path:
     """
     Walks up from the current working directory to find the project root,
     identified by the presence of a marker file or directory like pyproject.toml or .git.
