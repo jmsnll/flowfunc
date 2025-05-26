@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import traceback
 from datetime import datetime
+from functools import cached_property
 from typing import Any
 from typing import ClassVar
 
@@ -51,26 +52,19 @@ class RunCommand(WorkflowCommand):
         ),
     ]
 
-    _run_id: str | None = None
-    _run_paths: run.ArtifactPaths | None = None
-
-    @property
+    @cached_property
     def run_paths(self) -> run.ArtifactPaths:
         """Creates run directory structure and returns (run_base_dir, outputs_dir, cache_dir_for_pipefunc)."""
-        if self._run_paths is None:
-            flowfunc = self.pyproject.data.get("tool").get("flowfunc", {})
-            runs_directory_relative = flowfunc.get("runs_directory", "runs")
-            runs_directory_absolute = locations.project_root() / runs_directory_relative
-            self._run_paths = run.setup_directories(
-                self.run_id, self.workflow_model.metadata.name, runs_directory_absolute
-            )
-        return self._run_paths
+        flowfunc = self.pyproject.data.get("tool").get("flowfunc", {})
+        runs_directory_relative = flowfunc.get("runs_directory", "runs")
+        runs_directory_absolute = locations.project_root() / runs_directory_relative
+        return run.setup_directories(
+            self.run_id, self.workflow_model.metadata.name, runs_directory_absolute
+        )
 
-    @property
+    @cached_property
     def run_id(self) -> str:
-        if not self._run_id:
-            self._run_id = run.generate_unique_run_id(self.option("run-name"))
-        return self._run_id
+        return run.generate_unique_run_id(self.option("run-name"))
 
     def handle(self) -> int:
         start_time = datetime.now()
