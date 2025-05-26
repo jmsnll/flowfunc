@@ -6,7 +6,7 @@ requires-python = ">=3.13"
 members = [
     "image-processing",
     "nl-text-summarization",
-    "pipeflow",
+    "flowfunc",
 ]
 
 [[package]]
@@ -1178,7 +1178,7 @@ wheels = [
 ]
 
 [[package]]
-name = "pipeflow"
+name = "flowfunc"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

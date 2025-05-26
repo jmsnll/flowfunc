@@ -1,4 +1,4 @@
-apiVersion: pipeflow.dev/v1alpha1
+apiVersion: flowfunc.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: skimage-image-batch-processor-from-files

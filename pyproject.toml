@@ -1,5 +1,5 @@
 [project]
-name = "pipeflow"
+name = "flowfunc"
 version = "0.1.0"
 description = "A wrapper around pipefunc for managing workflows."
 authors = [{ name = "James Neill", email = "hello@jamesneill.codes" }]
@@ -94,7 +94,7 @@ line-ending = "auto"
 members = ["examples/*"]
 
 
-[tool.pipeflow]
+[tool.flowfunc]
 source_directory = "dev/src"
 workflows_directory = "dev/workflows"
 runs_directory = "dev/runs"
