@@ -60,7 +60,7 @@ def discover_command_names_from_modules() -> set[str]:
 
         try:
             module = importlib.import_module(module_import_path)
-            for member_name, member_class in inspect.getmembers(
+            for _member_name, member_class in inspect.getmembers(
                 module, inspect.isclass
             ):
                 if (
@@ -92,7 +92,7 @@ def discover_command_names_from_modules() -> set[str]:
     return discovered_command_names
 
 
-def test_application_commands_list_is_complete_and_accurate():
+def test_application_commands_list_is_complete_and_accurate() -> None:
     """
     Ensures the COMMANDS list in application.py accurately reflects all defined
     Command classes in the flowfunc.console.commands directory and its subdirectories.
@@ -103,13 +103,13 @@ def test_application_commands_list_is_complete_and_accurate():
     missing_from_list = defined_command_names_in_code - listed_command_names_in_app
     assert not missing_from_list, (
         f"The following commands are defined in modules but MISSING from the COMMANDS list "
-        f"in flowfunc/console/application.py: {sorted(list(missing_from_list))}"
+        f"in flowfunc/console/application.py: {sorted(missing_from_list)}"
     )
 
     missing_from_code = listed_command_names_in_app - defined_command_names_in_code
     assert not missing_from_code, (
         f"The following commands are listed in COMMANDS in flowfunc/console/application.py "
-        f"but no corresponding command class/name attribute was found: {sorted(list(missing_from_code))}"
+        f"but no corresponding command class/name attribute was found: {sorted(missing_from_code)}"
     )
 
     # This final assert is redundant if the two above pass but serves as a clear overall check.
