@@ -18,17 +18,16 @@ def from_model(
     if not function_path:
         if default_module and step_model.name:
             function_path = f"{default_module}.{step_model.name}"
-            logger.info(  # Use info or debug level as appropriate
+            logger.debug(
                 f"Step '{step_model.name}': 'function' not specified. Defaulting to '{function_path}' using default_module and step name."
             )
         else:
-            # Condition where defaulting is not possible
             error_msg_parts = []
             if not default_module:
                 error_msg_parts.append(
                     "no 'default_module' is specified in the workflow"
                 )
-            if not step_model.name:  # Should not happen if name is required in schema
+            if not step_model.name:
                 error_msg_parts.append("'name' is missing for the step")
 
             detail = " and ".join(error_msg_parts)

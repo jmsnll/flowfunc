@@ -91,11 +91,9 @@ def setup_directories(
         run_dir_path.mkdir(parents=True, exist_ok=True)
         workflow_output_dir_path.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Run directory created/verified: {run_dir_path}")
-        logger.info(
-            f"Workflow output directory created/verified: {workflow_output_dir_path}"
-        )
-        logger.info(f"Run-specific cache directory path: {cache_dir_path}")
+        logger.info(f"Run directory: {run_dir_path}")
+        logger.info(f"Workflow output directory: {workflow_output_dir_path}")
+        logger.info(f"Cache directory: {cache_dir_path}")
 
         return ArtifactPaths(
             run_dir=run_dir_path,
@@ -198,7 +196,7 @@ def resolve_inputs(
                 and name in expected_set
             ):
                 resolved[name] = definition.default
-                logger.info(
+                logger.debug(
                     f"Applied default for global input '{name}': {definition.default!r}"
                 )
             elif name not in expected_set:
@@ -284,14 +282,14 @@ def _serialize_output(
         raise OSError(msg)
 
     target_path.parent.mkdir(parents=True, exist_ok=True)
-    logger.info(
-        f"Attempting to save output '{output_name}' to '{target_path}' (format: {file_suffix or 'unknown'})"
-    )
-
-    serializer_func(data_to_save, target_path)
-
     relative_saved_path = str(target_path.relative_to(project_root))
+
+    logger.debug(
+        f"Attempting to save output '{output_name}' to '{relative_saved_path}'"
+    )
+    serializer_func(data_to_save, target_path)
     logger.info(f"Successfully saved output '{output_name}' to '{relative_saved_path}'")
+
     return relative_saved_path
 
 

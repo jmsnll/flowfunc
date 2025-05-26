@@ -121,7 +121,7 @@ class FlowFuncConsole(BaseApplication):
     def register_command_loggers(
         self, event: Event, event_name: str, _: EventDispatcher
     ) -> None:
-        from flowfunc.console.logging.filters import PIPEFLOW_FILTER
+        from flowfunc.console.logging.filters import FLOWFUNC_FILTER
         from flowfunc.console.logging.filters import PIPEFUNC_FILTER
         from flowfunc.console.logging.io_formatter import IOFormatter
         from flowfunc.console.logging.io_handler import IOHandler
@@ -150,7 +150,7 @@ class FlowFuncConsole(BaseApplication):
 
         # only log third-party packages when very verbose
         if not io.is_very_verbose():
-            handler.addFilter(PIPEFLOW_FILTER)
+            handler.addFilter(FLOWFUNC_FILTER)
             handler.addFilter(PIPEFUNC_FILTER)
 
         for name in loggers:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import logging
 import traceback
+from collections import namedtuple
 from datetime import datetime
 from typing import Any
 from typing import ClassVar
@@ -12,9 +12,11 @@ from cleo.io.inputs.option import Option
 from flowfunc import locations
 from flowfunc.console.commands.command import WorkflowCommand
 from flowfunc.workflow import run
+from flowfunc.workflow.run import ArtifactPaths
+from flowfunc.workflow.run import generate_unique_run_id
 from flowfunc.workflow.schema import PipefuncCacheConfigUsed
 
-logger = logging.getLogger(__name__)
+RunPaths = namedtuple("RunPaths", ["run_dir", "workflow_output_dir", "cache_dir"])
 
 
 class RunCommand(WorkflowCommand):
@@ -52,10 +54,10 @@ class RunCommand(WorkflowCommand):
     ]
 
     _run_id: str | None = None
-    _run_paths: run.ArtifactPaths | None = None
+    _run_paths: ArtifactPaths | None = None
 
     @property
-    def run_paths(self) -> run.ArtifactPaths:
+    def run_paths(self) -> ArtifactPaths:
         """Creates run directory structure and returns (run_base_dir, outputs_dir, cache_dir_for_pipefunc)."""
         if self._run_paths is None:
             flowfunc = self.pyproject.data.get("tool").get("flowfunc", {})
@@ -69,7 +71,7 @@ class RunCommand(WorkflowCommand):
     @property
     def run_id(self) -> str:
         if not self._run_id:
-            self._run_id = run.generate_unique_run_id(self.option("run-name"))
+            self._run_id = generate_unique_run_id(self.option("run-name"))
         return self._run_id
 
     def handle(self) -> int:
@@ -80,11 +82,11 @@ class RunCommand(WorkflowCommand):
         final_effective_inputs: dict[str, Any] = {}
 
         try:
-            logger.info(
-                f"Starting Run ID: {self.run_id} for workflow: {self.workflow_model.metadata.name}"
+            self.line(
+                f"<info>Starting Run ID: {self.run_id} for workflow: {self.workflow_model.metadata.name}</info>"
             )
-            logger.info(
-                f"Initialised run output directories: {self.run_paths} for workflow: {self.workflow_model.metadata.name}"
+            self.line(
+                f"<info>Initialised run output directories: {self.run_paths} for workflow: {self.workflow_model.metadata.name}</info>"
             )
 
             # TODO: don't pass both inputs
@@ -109,12 +111,27 @@ class RunCommand(WorkflowCommand):
                 self.workflow_model.spec.pipeline_outputs,
                 self.run_paths.workflow_output_dir,
             )
+
+        # except InvalidInputError as e:
+        #     self.line_error(f"<error>Input Error: {e}</error>")
+        # except MissingRequiredInputsError as e:
+        #     self.line_error(
+        #         f"<error>Input Validation Failed: {e}</error>"
+        #     )  # Exception formats its own details
+        # except RunEnvironmentError as e:
+        #     self.line_error(f"<error>Run Environment Setup Failed: {e}</error>")
+        # except (
+        #     SerializationError
+        # ) as e:  # Should be handled more locally, but as a safeguard
+        #     self.line_error(f"<error>Output Serialization Failed: {e}</error>")
+        # except FlowfuncError as e:  # Catch other known custom errors
+        #     self.line_error(f"<error>Run failed: {e}</error>")
         except Exception as e:  # Catch-all for unexpected errors
-            logger.error(
-                f"An unexpected error occurred during workflow run {self.run_id}: {e}"
+            self.line_error(
+                f"<error>An unexpected error occurred during workflow run {self.run_id}: {e}</error>"
             )
             if self.io.is_debug() or self.io.is_very_verbose():
-                traceback.print_exc()
+                self.io.write_error_line(traceback.format_exc())
         finally:
             end_time = datetime.now()
             from flowfunc import __version__ as flowfunc_version
@@ -142,22 +159,20 @@ class RunCommand(WorkflowCommand):
                         self.run_paths.cache_dir
                     )
 
-            run_info = run.prepare_run_info_model(
+            run.prepare_run_info_model(
                 run_id=self.run_id,
                 status=run_status,
                 start_time=start_time,
                 end_time=end_time,
                 flowfunc_version_str=flowfunc_version.__version__,
                 workflow_model_instance=self.workflow_model,
-                workflow_file_cli_arg=str(
-                    self._workflow_path.absolute().relative_to(locations.project_root())
-                ),
+                workflow_file_cli_arg=self.argument("workflow")
+                .absolute()
+                .relative_to(locations.project_root()),
                 initial_user_inputs=initial_user_inputs,
                 final_effective_inputs=final_effective_inputs,
                 persisted_outputs_manifest=persisted_outputs_manifest,
                 effective_cache_config=cache_config,
                 run_artifacts_dir_abs_path=self.run_paths.run_dir,
             )
-            run_info.save_run_info(run_dir=self.run_paths.run_dir)
-
         return 0 if run_status == "SUCCESS" else 1
