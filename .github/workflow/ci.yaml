@@ -1,4 +1,4 @@
-name: Pipeflow CI
+name: FlowFunc CI
 
 on:
   push:
@@ -49,26 +49,26 @@ jobs:
         run: |
           source $GITHUB_ENV # Activates the venv
           echo "Running Ruff linter..."
-          uv run ruff check pipeflow/ tests/
+          uv run ruff check flowfunc/ tests/
           echo "Checking formatting with Ruff..."
-          uv run ruff format --check pipeflow/ tests/
+          uv run ruff format --check flowfunc/ tests/
 
       - name: Type Check with MyPy
         run: |
           source $GITHUB_ENV
           echo "Running MyPy type checker..."
           # Adjust paths and arguments as per your MyPy configuration
-          uv run mypy pipeflow/ tests/ --ignore-missing-imports
+          uv run mypy flowfunc/ tests/ --ignore-missing-imports
           # Consider adding --strict or other flags you use locally.
 
       - name: Run Tests with Pytest and Coverage
         run: |
           source $GITHUB_ENV
           echo "Running Pytest..."
-          # --cov=pipeflow targets your main package for coverage.
+          # --cov=flowfunc targets your main package for coverage.
           # Outputs coverage reports to terminal and coverage.xml.
           uv run pytest \
-            --cov=pipeflow \
+            --cov=flowfunc \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
             tests/

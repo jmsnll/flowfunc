@@ -1,4 +1,4 @@
-NAME := pipeflow
+NAME := flowfunc
 
 # UV command, ensuring it's available
 UV := $(shell command -v uv 2> /dev/null)

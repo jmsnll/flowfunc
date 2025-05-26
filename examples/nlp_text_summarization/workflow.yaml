@@ -1,4 +1,4 @@
-apiVersion: pipeflow.dev/v1beta1
+apiVersion: flowfunc.dev/v1beta1
 kind: Pipeline
 metadata:
   name: text-analysis-sentiment-pipeline
@@ -29,7 +29,7 @@ spec:
       description: "Extracts the most common keywords from tokenized text."
       inputs:
         tokens: "tokenize_input_text" # Uses output 'tokens' from 'tokenize_input_text' step
-                                      # pipeflow resolves this to tokenize_input_text.tokens
+                                      # flowfunc resolves this to tokenize_input_text.tokens
       options:
         output_name: "keywords"
         mapspec: "tokens[n] -> keywords[n]"
