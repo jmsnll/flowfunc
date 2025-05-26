@@ -11,6 +11,8 @@ from cleo.io.inputs.option import Option
 
 from flowfunc import locations
 from flowfunc.console.commands.command import WorkflowCommand
+from flowfunc.console.logging.structlog import add_json_file_handler
+from flowfunc.console.logging.structlog import remove_json_file_handler
 from flowfunc.workflow import run
 from flowfunc.workflow.schema import PipefuncCacheConfigUsed
 
@@ -78,6 +80,7 @@ class RunCommand(WorkflowCommand):
         persisted_outputs_manifest: dict[str, str] = {}
         initial_user_inputs: dict[str, Any] = {}
         final_effective_inputs: dict[str, Any] = {}
+        json_file_handler = None
 
         try:
             logger.info(
@@ -91,6 +94,9 @@ class RunCommand(WorkflowCommand):
             initial_user_inputs = run.load_initial_inputs_from_sources(
                 self.option("inputs"), self.option("inputs-file")
             )
+
+            log_file = self.run_paths.run_dir / f"run_{self.run_id}.log.jsonl"
+            json_file_handler = add_json_file_handler(log_file)
 
             final_effective_inputs = run.resolve_inputs(
                 initial_user_inputs,
@@ -119,6 +125,7 @@ class RunCommand(WorkflowCommand):
             end_time = datetime.now()
             from flowfunc import __version__ as flowfunc_version
 
+            # TODO: extract to funcflow.workflow.run module
             cache_type = None
             cache_config = PipefuncCacheConfigUsed(cache_type=None, cache_kwargs={})
 
@@ -159,5 +166,8 @@ class RunCommand(WorkflowCommand):
                 run_artifacts_dir_abs_path=self.run_paths.run_dir,
             )
             run_info.save_run_info(run_dir=self.run_paths.run_dir)
+
+            if json_file_handler:
+                remove_json_file_handler()
 
         return 0 if run_status == "SUCCESS" else 1
