@@ -19,8 +19,6 @@ force_single_line = true
 
 [tool.ruff]
 target-version = "py313"
-
-# Same as Black.
 line-length = 88
 indent-width = 4
 
@@ -99,6 +97,7 @@ members = ["examples/*"]
 [tool.pipeflow]
 source_directory = "src"
 workflows_directory = "workflows"
+runs_directory = "runs"
 
 [dependency-groups]
 dev = [

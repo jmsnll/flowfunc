@@ -19,6 +19,7 @@ class InitCommand(Command):
         project_dir = Path.cwd()
         workflows_dir = project_dir / "workflows"
         src_dir = project_dir / "src"
+        runs_dir = project_dir / "runs"
 
         if not self.pyproject.path.exists():
             self.line_error(
@@ -38,10 +39,13 @@ class InitCommand(Command):
             if "workflows_directory" not in pipeflow_table:
                 pipeflow_table["workflows_directory"] = workflows_dir.name
                 updated = True
+            if "runs_directory" not in pipeflow_table:
+                pipeflow_table["runs_directory"] = runs_dir.name
+                updated = True
 
             if updated:
                 tool_table["pipeflow"] = pipeflow_table
-                self.pyproject.data.add("tool", tool_table)
+                self.pyproject.data["tool"] = tool_table
                 self.pyproject.save()
                 self.line(
                     "<info>Updated pyproject.toml with [tool.pipeflow] settings.</info>"
@@ -53,9 +57,12 @@ class InitCommand(Command):
 
         except Exception as e:
             self.line_error(f"<error>Failed to update pyproject.toml: {e}</error>")
+            import traceback
+
+            self.line_error(f"<error>Traceback: {traceback.format_exc()}</error>")
             return 1
 
-        for directory in [workflows_dir, src_dir]:
+        for directory in [workflows_dir, src_dir, runs_dir]:
             if not directory.exists():
                 directory.mkdir(parents=True)
                 self.line(f"<info>Created directory: {directory.name}/</info>")
@@ -66,5 +73,8 @@ class InitCommand(Command):
         )
         self.line(
             f"  - Define your workflows in the <comment>{workflows_dir.name}</comment> directory."
+        )
+        self.line(
+            f"  - View your workflow runs in the <comment>{runs_dir.name}</comment> directory."
         )
         return 0

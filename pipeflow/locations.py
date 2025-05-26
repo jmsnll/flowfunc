@@ -21,3 +21,23 @@ def data_dir() -> Path:
         return Path(application_home).expanduser()
 
     return user_data_path(APP_NAME, appauthor=False, roaming=True)
+
+
+def get_project_root(markers=None) -> Path:
+    """
+    Walks up from the current working directory to find the project root,
+    identified by the presence of a marker file or directory like pyproject.toml or .git.
+
+    Returns:
+        Path to the project root. If no marker is found, returns Path.cwd().
+    """
+    if markers is None:
+        markers = {"pyproject.toml", ".git"}
+
+    current = Path.cwd()
+
+    for parent in [current, *current.parents]:
+        if any((parent / marker).exists() for marker in markers):
+            return parent
+
+    return current

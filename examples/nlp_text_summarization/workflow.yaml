@@ -61,4 +61,5 @@ spec:
         # No mapspec here as this function aggregates the list of sentiments.
 
   pipeline_outputs:
-    - "aggregate_sentiment_results.result_summary" # Exposes the final aggregated summary as a pipeline output
+    - name: "result_summary"
+      path: "final_sentiment_report.json"

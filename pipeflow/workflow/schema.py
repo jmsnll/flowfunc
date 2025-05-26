@@ -1,6 +1,7 @@
 from __future__ import annotations  # Important for forward references in type hints
 
 from enum import Enum
+from pathlib import Path
 from typing import Any
 from typing import Literal
 
@@ -43,6 +44,29 @@ class MetadataModel(BaseModel):
     description: str | None = None
     labels: dict[str, str] | None = None
     annotations: dict[str, str] | None = None
+
+
+class PipelineOutputItem(BaseModel):  # New model for detailed output definition
+    name: str  # Name of the output from pipefunc results (e.g., "step_name.output_key")
+    path: Path | None = (
+        None  # Optional: path to save this output, relative to run's output dir
+    )
+    # format: str | None = None # Optional: if pipeflow needs to handle serialization (e.g., "csv", "json", "parquet")
+    # persist: bool = True # Implicitly true if path is given
+
+    class Config:
+        extra = "forbid"
+
+
+class PipelineOutputConfig(BaseModel):  # New model for output configuration
+    base_path_relative_to_workflow: bool | None = (
+        False  # If true, base_path is relative to workflow.yaml, else to project's pipeflow_runs
+    )
+    base_path: str | None = None  # e.g., "results" or "{workflow_bundle_name}/results"
+    # layout_pattern: str | None = None # For more complex layouts, e.g. "{step_name}/{output_name}.parquet"
+
+    class Config:
+        extra = "forbid"
 
 
 class PipelineConfigModel(BaseModel):
@@ -130,7 +154,10 @@ class PipelineSpecModel(BaseModel):
         default_factory=dict
     )
     steps: list[StepModel] = Field(..., min_length=1)  # Pydantic v2 uses min_length
-    pipeline_outputs: list[str] | None = Field(default_factory=list)
+    pipeline_outputs: list[str | PipelineOutputItem] = Field(
+        default_factory=list
+    )  # MODIFIED
+    output_config: PipelineOutputConfig | None = None  # ADDED
 
     class Config:
         extra = "forbid"
