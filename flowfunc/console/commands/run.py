@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import json
-import uuid
+from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
-from typing import cast
 
 from cleo.helpers import option
 from cleo.io.inputs.option import Option
@@ -15,9 +14,14 @@ from flowfunc import __version__ as flowfunc_version
 from flowfunc import locations
 from flowfunc.console.commands.command import WorkflowCommand
 from flowfunc.io.serializer import _SERIALIZERS
-from flowfunc.workflow.schema import FlowFuncPipelineModel
+from flowfunc.workflow.run import generate_id
+from flowfunc.workflow.schema import PipefuncCacheConfigUsed
+from flowfunc.workflow.schema import RunInfoModel
 
 PIPEFLOW_RUNS_DIR_NAME = "runs"
+
+
+RunPaths = namedtuple("RunPaths", ["run_dir", "workflow_output_dir", "cache_dir"])
 
 
 class RunCommand(WorkflowCommand):
@@ -60,199 +64,168 @@ class RunCommand(WorkflowCommand):
         ),
     ]
 
-    def _load_user_inputs(self) -> dict[str, Any] | None:
-        user_provided_inputs: dict[str, Any] = {}
+    _run_id: str | None = None
+    _run_paths: RunPaths | None = None
+
+    @property
+    def user_input_values(self) -> dict[str, Any]:
         inputs_str = self.option("inputs")
         inputs_file = self.option("inputs-file")
 
         if inputs_file:
             self.line(f"<comment>Loading inputs from file: {inputs_file}</comment>")
-            try:
-                with open(inputs_file) as f:
-                    user_provided_inputs = json.load(f)
-            except FileNotFoundError:
-                self.line_error(f"<error>Input file not found: {inputs_file}</error>")
-                return None
-            except json.JSONDecodeError as e:
-                self.line_error(
-                    f"<error>Invalid JSON in input file {inputs_file}: {e}</error>"
-                )
-                return None
-        elif inputs_str:
-            try:
-                user_provided_inputs = json.loads(inputs_str)
-            except json.JSONDecodeError as e:
-                self.line_error(f"<error>Invalid JSON string for inputs: {e}</error>")
-                return None
+            with Path(inputs_file).open() as f:
+                return json.load(f)
 
-        if not isinstance(user_provided_inputs, dict):
-            self.line_error("<error>Inputs must be a JSON object (dictionary).</error>")
-            return None
+        if inputs_str:
+            result = json.loads(inputs_str)
+            self.line(f"<comment>Loaded inputs from parameters: {result}</comment>")
+            return result
 
-        return user_provided_inputs
+        return {}
 
-    def _apply_flowfunc_global_defaults(
-        self, current_inputs: dict[str, Any], all_pipeline_input_names: tuple[str, ...]
+    def apply_global_defaults(
+        self, current_inputs: dict[str, Any], all_input_names: tuple[str, ...]
     ) -> dict[str, Any]:
         resolved_inputs = current_inputs.copy()
-        if not self.workflow_model or not self.workflow_model.spec.global_inputs:  # type: ignore
+
+        if not self.workflow_model.spec.global_inputs:
             return resolved_inputs
 
-        for name, definition in self.workflow_model.spec.global_inputs.items():  # type: ignore
+        for name, definition in self.workflow_model.spec.global_inputs.items():
             if name not in resolved_inputs and definition.default is not None:
-                if name in all_pipeline_input_names:
+                if name in all_input_names:
                     resolved_inputs[name] = definition.default
                     self.line(
                         f"<comment>Using default value for '{name}' from workflow's global_inputs: {definition.default}</comment>"
                     )
+
         return resolved_inputs
 
-    def _get_missing_inputs_using_pipeline_info(
-        self, effective_inputs: dict[str, Any]
-    ) -> list[str]:
-        missing: list[str] = []
-        pipefunc_required_inputs = self.workflow.info().get("required_inputs", [])
+    def check_for_missing_inputs(self, effective_inputs: dict[str, Any]) -> None:
+        required_inputs = self.workflow.info().get("required_inputs", [])
+        missing = [key for key in required_inputs if key not in effective_inputs]
 
-        for req_input_name in pipefunc_required_inputs:
-            if req_input_name not in effective_inputs:
-                missing.append(req_input_name)
-        return missing
-
-    def _generate_run_id(self, user_provided_name: str | None) -> str:
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        unique_suffix = uuid.uuid4().hex[:6]
-        if user_provided_name:
-            safe_name = "".join(
-                c if c.isalnum() or c in ["-", "_"] else "_" for c in user_provided_name
-            ).strip("_")
-            return (
-                f"{ts}_{safe_name}_{unique_suffix}"
-                if safe_name
-                else f"run_{ts}_{unique_suffix}"
-            )
-        return f"run_{ts}_{unique_suffix}"
-
-    def _setup_run_paths(
-        self, run_id: str, workflow_model: FlowFuncPipelineModel
-    ) -> tuple[Path, Path, Path] | None:
-        """Creates run directory structure and returns (run_base_dir, outputs_dir, cache_dir_for_pipefunc)."""
-        project_root = locations.project_root()
-
-        if cli_output_root := self.option("output-root"):
-            global_runs_base_dir = Path(cli_output_root).resolve()
-        else:
-            tool = self.pyproject.data.get("tool")
-            flowfunc = tool.get("flowfunc", {})
-            output_root_dir = flowfunc.get("runs_directory", PIPEFLOW_RUNS_DIR_NAME)
-            global_runs_base_dir = project_root / output_root_dir
-
-        # Sanitize workflow name for directory creation
-        workflow_name_sanitized = "".join(
-            c if c.isalnum() or c in ["-", "_"] else "_"
-            for c in workflow_model.metadata.name
-        ).strip("_")
-
-        run_base_dir = global_runs_base_dir / workflow_name_sanitized / run_id
-        # Determine specific output path for this workflow's explicitly saved artifacts
-        # This considers workflow_model.spec.output_config
-        workflow_outputs_base = run_base_dir / "outputs"
-
-        if (
-            workflow_model.spec.output_config
-            and workflow_model.spec.output_config.base_path
-        ):
-            # Assuming output_config.base_path is relative within the run's "outputs" dir for now
-            workflow_outputs_base = (
-                workflow_outputs_base / workflow_model.spec.output_config.base_path
-            )
-
-        pipefunc_run_specific_cache_dir = run_base_dir / ".pipefunc_cache"
-
-        try:
-            workflow_outputs_base.mkdir(parents=True, exist_ok=True)
-            # pipefunc_run_specific_cache_dir will be created by DiskCache if used.
-            self.line(
-                f"<comment>Run artifacts will be stored under: {run_base_dir.relative_to(project_root)}</comment>"
-            )
-            return run_base_dir, workflow_outputs_base, pipefunc_run_specific_cache_dir
-        except Exception as e:
+        if missing:
             self.line_error(
-                f"<error>Could not create run directory structure at {run_base_dir}: {e}</error>"
+                "<error>Execution aborted. Missing required inputs:</error>"
             )
-            return None
+            for key in missing:
+                self.line_error(f"  - {key}")
+            raise ValueError(f"Missing required inputs: {', '.join(missing)}")
 
-    def _get_effective_cache_kwargs(
+    @property
+    def run_paths(self) -> RunPaths:
+        """Creates run directory structure and returns (run_base_dir, outputs_dir, cache_dir_for_pipefunc)."""
+        if self._run_paths is None:
+            project_root = locations.project_root()
+
+            if cli_output_root := self.option("output-root"):
+                global_runs_base_dir = Path(cli_output_root).resolve()
+            else:
+                tool = self.pyproject.data.get("tool")
+                flowfunc = tool.get("flowfunc", {})
+                output_root_dir = flowfunc.get("runs_directory", PIPEFLOW_RUNS_DIR_NAME)
+                global_runs_base_dir = project_root / output_root_dir
+
+            # Sanitize workflow name for directory creation
+            workflow_name_sanitized = "".join(
+                c if c.isalnum() or c in ["-", "_"] else "_"
+                for c in self.workflow_model.metadata.name
+            ).strip("_")
+
+            run_base_dir = global_runs_base_dir / workflow_name_sanitized / self.run_id
+            # Determine specific output path for this workflow's explicitly saved artifacts
+            # This considers workflow_model.spec.output_config
+            workflow_outputs_base = run_base_dir / "outputs"
+
+            if (
+                self.workflow_model.spec.output_config
+                and self.workflow_model.spec.output_config.base_path
+            ):
+                # Assuming output_config.base_path is relative within the run's "outputs" dir for now
+                workflow_outputs_base = (
+                    workflow_outputs_base
+                    / self.workflow_model.spec.output_config.base_path
+                )
+
+            pipefunc_run_specific_cache_dir = run_base_dir / ".pipefunc_cache"
+
+            try:
+                workflow_outputs_base.mkdir(parents=True, exist_ok=True)
+                self.line(
+                    f"<comment>Run artifacts will be stored under: {run_base_dir.relative_to(project_root)}</comment>"
+                )
+
+                self._run_paths = RunPaths(
+                    run_base_dir, workflow_outputs_base, pipefunc_run_specific_cache_dir
+                )
+            except Exception as e:
+                self.line_error(
+                    f"<error>Could not create run directory structure at {run_base_dir}: {e}</error>"
+                )
+                raise e
+        return self._run_paths
+
+    @property
+    def effective_cache_kwargs(
         self,
-        workflow_model: FlowFuncPipelineModel,
-        pipefunc_run_specific_cache_dir: Path,  # Now explicitly passed
-        force_run_specific_cache: bool,
-    ) -> dict[str, Any] | None:  # Return type hint to Dict
+    ) -> dict[str, Any] | None:
         """Determines effective cache_kwargs for pipefunc."""
-        effective_kwargs: dict[str, Any] = {}  # Explicitly Dict
+        effective_kwargs: dict[str, Any] = {}
         cache_type = None
 
-        if workflow_model.spec.pipeline_config:
-            if workflow_model.spec.pipeline_config.cache_type:
-                cache_type = workflow_model.spec.pipeline_config.cache_type.value
-            if workflow_model.spec.pipeline_config.cache_kwargs:
+        if self.workflow_model.spec.pipeline_config:
+            if self.workflow_model.spec.pipeline_config.cache_type:
+                cache_type = self.workflow_model.spec.pipeline_config.cache_type.value
+            if self.workflow_model.spec.pipeline_config.cache_kwargs:
                 effective_kwargs = (
-                    workflow_model.spec.pipeline_config.cache_kwargs.copy()
+                    self.workflow_model.spec.pipeline_config.cache_kwargs.copy()
                 )
 
         if cache_type == "disk":
             current_yaml_cache_dir = effective_kwargs.get("cache_dir")
-            if force_run_specific_cache or not current_yaml_cache_dir:
-                effective_kwargs["cache_dir"] = str(pipefunc_run_specific_cache_dir)
-                # Logged by caller if different
-            # If current_yaml_cache_dir exists and not forcing, it will be used.
-            # The run_info.json will log what was actually used.
+            if self.option("force-run-specific-cache") or not current_yaml_cache_dir:
+                effective_kwargs["cache_dir"] = str(self.run_paths.cache_dir)
 
         return effective_kwargs if cache_type else None
 
-    def _save_declared_outputs(
-        self,
-        pipefunc_results: dict[str, Any],
-        workflow_model: FlowFuncPipelineModel,
-        workflow_outputs_save_dir: Path,  # Base directory to save outputs for this run
-    ) -> dict[str, str]:
+    def save_outputs(self, pipefunc_results: dict[str, Any]) -> dict[str, str]:
         """Saves declared pipeline_outputs based on their 'path' attribute."""
         saved_output_paths: dict[str, str] = {}
-        if not workflow_model.spec.pipeline_outputs or not pipefunc_results:
+        if not self.workflow_model.spec.pipeline_outputs or not pipefunc_results:
             return saved_output_paths
 
-        for out_def_union in workflow_model.spec.pipeline_outputs:
-            if isinstance(out_def_union, str):
-                # This output is declared by name only, flowfunc doesn't save it explicitly here.
-                # It might be an intermediate result, or a file path returned by a step directly.
-                # We could log its value if found in results.
-                if out_def_union in pipefunc_results:
+        for output in self.workflow_model.spec.pipeline_outputs:
+            if isinstance(output, str):
+                if output in pipefunc_results:
                     self.line(
-                        f"<comment>Declared output (not saved by flowfunc): '{out_def_union}' - value present in results.</comment>"
+                        f"<comment>Declared output (not saved by flowfunc): '{output}' - value present in results.</comment>"
                     )
                 continue
 
-            out_def = cast("PipelineOutputItem", out_def_union)
-
-            if out_def.path and out_def.name in pipefunc_results:
-                # Data to save, could be nested in an 'output' attribute if pipefunc wraps it
+            if output.path and output.name in pipefunc_results:
                 data_to_save = getattr(
-                    pipefunc_results[out_def.name],
+                    pipefunc_results[output.name],
                     "output",
-                    pipefunc_results[out_def.name],
+                    pipefunc_results[output.name],
                 )
 
-                # Path is relative to workflow_outputs_save_dir
-                actual_save_path = (workflow_outputs_save_dir / out_def.path).resolve()
+                actual_save_path = (
+                    self.run_paths.workflow_output_dir / output.path
+                ).resolve()
 
                 try:
-                    saved_output_paths[out_def.name] = self.serialize_output(
-                        data_to_save,
-                        output_name=out_def.name,
-                        target_path=actual_save_path,
+                    saved_output_paths[output.name] = str(
+                        self.serialize_output(
+                            data_to_save,
+                            output_name=output.name,
+                            target_path=actual_save_path,
+                        )
                     )
                 except Exception as e:
                     self.line_error(
-                        f"<error>Failed to save declared output '{out_def.name}' to '{actual_save_path}': {e}</error>"
+                        f"<error>Failed to save declared output '{output.name}' to '{actual_save_path}': {e}</error>"
                     )
                     import traceback
 
@@ -261,7 +234,7 @@ class RunCommand(WorkflowCommand):
 
     def serialize_output(
         self, data_to_save: Any, *, output_name: str, target_path: Path
-    ) -> Path:
+    ) -> Path | None:
         file_suffix = target_path.suffix.lower()
         relative_save_path = target_path.relative_to(locations.project_root())
 
@@ -277,7 +250,6 @@ class RunCommand(WorkflowCommand):
                 f"<comment>Attempting to save output '{output_name}' to '{target_path}' (format: {file_suffix or 'unknown'})</comment>"
             )
             file_serializer(data_to_save, target_path)
-            # Relative path logging would need project_root, or handle it in the command
             self.line(
                 f"<info>Saved declared output '{output_name}' to '{relative_save_path}'</info>"
             )
@@ -288,139 +260,79 @@ class RunCommand(WorkflowCommand):
 
         return relative_save_path
 
-    def _write_run_info(
+    def save_run_info(
         self,
-        run_base_dir: Path,
-        run_id: str,
-        workflow_model: FlowFuncPipelineModel,
-        user_inputs: dict,
-        final_inputs_used: dict,
-        status: str,
-        start_time: datetime,
-        end_time: datetime,
-        saved_output_paths_manifest: dict[str, str],
-        final_cache_kwargs_used: dict | None,
-        workflow_file_abs_path: Path,
-    ):
-        run_info_path = run_base_dir / "run_info.json"
-        project_root = locations.project_root()
-        run_metadata = {
-            "run_id": run_id,
-            "flowfunc_version": flowfunc_version.__version__,
-            "workflow_metadata_name": workflow_model.metadata.name,
-            "workflow_metadata_version": workflow_model.metadata.version,
-            "workflow_file_relative_path": str(
-                workflow_file_abs_path.relative_to(project_root)
-            ),
-            "status": status,
-            "start_time_utc": start_time.astimezone().isoformat(),
-            "end_time_utc": end_time.astimezone().isoformat(),
-            "duration_seconds": round((end_time - start_time).total_seconds(), 3),
-            "user_provided_inputs": user_inputs,
-            "effective_inputs_used_by_pipefunc": final_inputs_used,
-            "flowfunc_persisted_outputs": saved_output_paths_manifest,
-            "pipefunc_cache_config_used": {
-                "cache_type": workflow_model.spec.pipeline_config.cache_type.value
-                if workflow_model.spec.pipeline_config
-                and workflow_model.spec.pipeline_config.cache_type
-                else None,
-                "cache_kwargs": final_cache_kwargs_used or {},
-            },
-            "run_artifacts_base_dir_relative": str(
-                run_base_dir.relative_to(project_root)
-            )
-            if run_base_dir.is_absolute() and project_root in run_base_dir.parents
-            else str(run_base_dir),
-        }
+        run_info: RunInfoModel,
+        run_dir: Path,
+    ) -> None:
+        """Saves the RunInfoModel to a 'run_info.json' file in the run_directory."""
+        run_info_file_path = run_dir / "run_info.json"
         try:
-            run_info_path.parent.mkdir(parents=True, exist_ok=True)  # Ensure dir exists
-            with open(run_info_path, "w") as f:
-                json.dump(run_metadata, f, indent=2, default=str)
+            run_info_file_path.parent.mkdir(parents=True, exist_ok=True)
+            run_info_file_path.write_text(run_info.model_dump_json(indent=2))
             self.line(
-                f"<comment>Run info saved: {run_info_path.relative_to(project_root)}</comment>"
+                f"<comment>Run info saved: {run_info_file_path.relative_to(locations.project_root())}</comment>"
             )
         except Exception as e:
             self.line_error(
-                f"<error>Failed to write run_info.json for run {run_id}: {e}</error>"
+                f"<error>Failed to write {run_info_file_path.name} for run {run_info.run_id}: {e}</error>"
             )
+            if self.io.is_debug() or self.io.is_very_verbose():
+                import traceback
+
+                self.io.write_error_line(traceback.format_exc())
+
+    @property
+    def run_id(self) -> str:
+        if not self._run_id:
+            self._run_id = generate_id(self.option("run-name"))
+        return self._run_id
 
     def handle(self) -> int:
         self.line(
-            f"<info>Attempting to run workflow: {self.argument('workflow')}</info>"
+            f"<info>Starting Run ID: {self.run_id} for workflow: {self.workflow_model.metadata.name}</info>"
         )
 
-        run_id = self._generate_run_id(self.option("run-name"))
-        self.line(
-            f"<info>Starting Run ID: {run_id} for workflow: {self.workflow_model.metadata.name}</info>"
-        )
-
-        paths_setup = self._setup_run_paths(run_id, self.workflow_model)
-        if not paths_setup:
+        if not self.run_paths:
             return 1
-        run_base_dir, workflow_outputs_save_dir, pipefunc_run_specific_cache_dir = (
-            paths_setup
-        )
 
         start_time = datetime.now()
-        status = "FAILED"
+        status = "FAILED"  # Default status
         final_run_inputs: dict[str, Any] = {}
         saved_outputs_manifest: dict[str, str] = {}
-        user_inputs: dict[str, Any] | None = {}  # To store what user initially provided
+        user_inputs_loaded: dict[str, Any] | None = {}
 
-        final_cache_kwargs = self._get_effective_cache_kwargs(
-            self.workflow_model,
-            pipefunc_run_specific_cache_dir,  # Pass the actual Path object
-            self.option("force-run-specific-cache"),
-        )
+        # Determine cache config early if needed, or just before populating RunInfoModel
+        final_cache_kwargs = self.effective_cache_kwargs
 
         try:
-            if self.workflow.info() is None:
-                raise ValueError(
-                    "Could not retrieve pipeline input/output information from pipefunc."
-                )
+            if not self.workflow.info():
+                raise ValueError("Workflow could not be loaded or info is unavailable.")
 
-            user_inputs = self._load_user_inputs()
-            if user_inputs is None:
+            if (
+                user_inputs_loaded := self.user_input_values
+            ) is None:  # Error already printed by _load_user_inputs
                 raise ValueError("Failed to load user inputs.")
 
             all_pipeline_input_names = self.workflow.info().get("inputs", tuple())
-            inputs_with_defaults = self._apply_flowfunc_global_defaults(
-                user_inputs, all_pipeline_input_names
+            inputs_with_defaults = self.apply_global_defaults(
+                user_inputs_loaded, all_pipeline_input_names
             )
 
-            missing_inputs = self._get_missing_inputs_using_pipeline_info(
-                inputs_with_defaults
-            )
-
-            if missing_inputs:
+            if missing_inputs := self.check_for_missing_inputs(inputs_with_defaults):
                 self.line_error(
                     "<error>Execution aborted. The following required inputs are missing:</error>"
                 )
                 for missing_input in missing_inputs:
                     self.line_error(f"  - {missing_input}")
-                raise ValueError("Missing required inputs.")  # Propagate to finally
+                raise ValueError("Missing required inputs.")
 
-            final_run_inputs = inputs_with_defaults  # Store for metadata
-            self.line(
-                f"<comment>Final effective inputs for run {run_id}: {json.dumps(final_run_inputs, indent=2, default=str)}</comment>"
-            )
-            if final_cache_kwargs and final_cache_kwargs.get("cache_dir"):
-                self.line(
-                    f"<comment>Pipefunc disk cache for this run expected at: {final_cache_kwargs['cache_dir']}</comment>"
-                )
-
-            results = self.workflow.map(final_run_inputs)
+            results = self.workflow.map(inputs_with_defaults)  # Execute the workflow
             status = "SUCCESS"
             self.line("<info>Workflow execution finished successfully.</info>")
 
             if results:
-                saved_outputs_manifest = self._save_declared_outputs(
-                    results, self.workflow_model, workflow_outputs_save_dir
-                )
-                # Optionally print summary of pipefunc results not explicitly saved by flowfunc
-                self.line("<comment>Raw pipefunc results overview (keys):</comment>")
-                self.line(json.dumps(list(results.keys()), indent=2))
-
+                saved_outputs_manifest = self.save_outputs(results)
             else:
                 self.line(
                     "<comment>Pipefunc execution returned no result data (or pipeline has no outputs).</comment>"
@@ -429,7 +341,7 @@ class RunCommand(WorkflowCommand):
         except Exception as e:
             status = "FAILED"
             self.line_error(
-                f"<error>Workflow execution failed for run {run_id}: {e}</error>"
+                f"<error>Workflow execution failed for run {self.run_id}: {e}</error>"
             )
             if self.io.is_debug() or self.io.is_very_verbose():
                 import traceback
@@ -437,20 +349,57 @@ class RunCommand(WorkflowCommand):
                 self.io.write_error_line(traceback.format_exc())
         finally:
             end_time = datetime.now()
-            # Ensure user_inputs is defined for _write_run_info
-            ui = user_inputs if user_inputs is not None else {}
-            self._write_run_info(
-                run_base_dir,
-                run_id,
-                self.workflow_model,
-                ui,
-                final_run_inputs,
-                status,
-                start_time,
-                end_time,
-                saved_outputs_manifest,
-                final_cache_kwargs,
-                Path(self.argument("workflow")).absolute(),
+            project_root = locations.project_root()
+
+            # Construct PipefuncCacheConfigUsed
+            cache_type_val = None
+            if (
+                self.workflow_model.spec.pipeline_config
+                and self.workflow_model.spec.pipeline_config.cache_type
+            ):
+                cache_type_val = (
+                    self.workflow_model.spec.pipeline_config.cache_type.value
+                )
+
+            pipefunc_cache_config_for_run = PipefuncCacheConfigUsed(
+                cache_type=cache_type_val,
+                cache_kwargs=final_cache_kwargs or {},
             )
+
+            # Construct the RunInfoModel instance
+            # Ensure workflow_model is available here; it should be from earlier checks.
+            if self.workflow_model:
+                run_info_to_save = RunInfoModel(
+                    run_id=self.run_id,
+                    flowfunc_version=flowfunc_version.__version__,
+                    workflow_metadata_name=self.workflow_model.metadata.name,
+                    workflow_metadata_version=self.workflow_model.metadata.version,
+                    workflow_file_relative_path=str(
+                        Path(self.argument("workflow"))
+                        .absolute()
+                        .relative_to(project_root)
+                    ),
+                    status=status,
+                    start_time_utc=start_time.astimezone(),
+                    end_time_utc=end_time.astimezone(),
+                    duration_seconds=round((end_time - start_time).total_seconds(), 3),
+                    user_provided_inputs=user_inputs_loaded
+                    if user_inputs_loaded is not None
+                    else {},
+                    effective_inputs_used_by_pipefunc=final_run_inputs,
+                    flowfunc_persisted_outputs=saved_outputs_manifest,
+                    pipefunc_cache_config_used=pipefunc_cache_config_for_run,
+                    run_artifacts_base_dir_relative=str(
+                        self.run_paths.run_dir.relative_to(project_root)
+                        if self.run_paths.run_dir.is_absolute()
+                        and project_root in self.run_paths.run_dir.parents
+                        else str(self.run_paths.run_dir)
+                    ),
+                )
+                self.save_run_info(run_info_to_save, self.run_paths.run_dir)
+            else:
+                self.line_error(
+                    f"<error>Could not save run_info for run {self.run_id} as workflow model was not available.</error>"
+                )
 
         return 0 if status == "SUCCESS" else 1
