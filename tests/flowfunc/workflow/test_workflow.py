@@ -26,11 +26,11 @@ def valid_workflow_dict() -> dict:
             "steps": [
                 {
                     "name": "calculate_md5_hash",
-                    "function": "tests.flowfunc.workflow.helpers.md5_hash",
+                    "func": "tests.flowfunc.workflow.helpers.md5_hash",
                     "description": "Calculates an MD5 hash of input data.",
                     "inputs": {"text_to_be_hashed": "hello, world!"},
                     "options": {
-                        "output_name": "hashed_text",
+                        "output": "hashed_text",
                         "mapspec": "text_to_be_hashed[n] -> hashed_text[n]",
                         "defaults": {
                             "text_to_be_hashed": "default input if not wired",
@@ -41,10 +41,10 @@ def valid_workflow_dict() -> dict:
                 },
                 {
                     "name": "make_bold",
-                    "function": "tests.flowfunc.workflow.helpers.markdown_make_bold",
+                    "func": "tests.flowfunc.workflow.helpers.markdown_make_bold",
                     "description": "Wraps the input text to make it bold.",
                     "options": {
-                        "output_name": "bold_string",
+                        "output": "bold_string",
                         "mapspec": "hashed_text[n] -> bold_string[n]",
                         "profile": True,
                         "debug": True,
@@ -83,25 +83,25 @@ def test_step_with_only_parameters(valid_workflow_dict) -> None:
     """Test a step that gets its input from parameters, not wiring."""
     step_dict = {
         "name": "param_step",
-        "function": "tests.flowfunc.workflow.helpers.md5_hash",
+        "func": "tests.flowfunc.workflow.helpers.md5_hash",
         "parameters": {"text_to_be_hashed": "direct_value_from_params"},
-        "options": {"output_name": "hashed_param_value"},
+        "options": {"output": "hashed_param_value"},
     }
     step_model = Step.model_validate(step_dict)
     pf_func = function.from_model(step_model)
 
     assert pf_func.defaults["text_to_be_hashed"] == "direct_value_from_params"
-    assert pf_func.output_name == "hashed_param_value"
+    assert pf_func.output == "hashed_param_value"
 
 
 def test_step_with_various_options(valid_workflow_dict) -> None:
     """Test a step with more PipefuncOptionsModel fields."""
     step_dict = {
         "name": "options_galore_step",
-        "function": "tests.flowfunc.workflow.helpers.md5_hash",
+        "func": "tests.flowfunc.workflow.helpers.md5_hash",
         "inputs": {"text_to_be_hashed": "$global.some_text"},
         "options": {
-            "output_name": "optioned_output",
+            "output": "optioned_output",
             "cache": True,
             "internal_shape": "?",
             # "post_execution_hook": "some.hook.function", # Would require mocking/setup
@@ -194,9 +194,9 @@ def test_pipeline_with_new_import_path(tmp_path, monkeypatch) -> None:
             "steps": [
                 {
                     "name": "doubler",
-                    "function": "custom_helpers.my_funcs.simple_func",
+                    "func": "custom_helpers.my_funcs.simple_func",
                     "options": {
-                        "output_name": "doubled_num",
+                        "output": "doubled_num",
                         "mapspec": "x[n] -> doubled_num[n]",
                     },
                 }
@@ -223,9 +223,9 @@ def test_pipeline_with_various_pipeline_configs() -> None:
         "steps": [
             {
                 "name": "s1",
-                "function": "tests.flowfunc.workflow.helpers.md5_hash",
+                "func": "tests.flowfunc.workflow.helpers.md5_hash",
                 "parameters": {"text_to_be_hashed": "abc"},
-                "options": {"output_name": "o1"},
+                "options": {"output": "o1"},
             }
         ],
     }
