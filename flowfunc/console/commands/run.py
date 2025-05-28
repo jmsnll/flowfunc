@@ -11,9 +11,7 @@ from cleo.io.inputs.option import Option
 
 from flowfunc.console.commands.command import WorkflowCommand
 from flowfunc.workflow import inputs
-from flowfunc.workflow import loader
 from flowfunc.workflow import outputs
-from flowfunc.workflow import pipeline
 from flowfunc.workflow import run
 from flowfunc.workflow.context import PathsContext
 from flowfunc.workflow.context import Status
@@ -47,16 +45,7 @@ class RunCommand(WorkflowCommand):
     ]
 
     def handle(self) -> int:
-        workflow_path = Path(self.argument("workflow"))
-
-        if not workflow_path.exists():
-            raise FileNotFoundError(f"Workflow file not found: {workflow_path}")
-
-        self.context.workflow.file_path = workflow_path
-        self.context.workflow.model = loader.load_from_path(workflow_path)
-        self.context.workflow.pipeline = pipeline.from_model(
-            loader.load_from_path(workflow_path).spec
-        )
+        self.load_workflow()
 
         self.context.metadata.run_id = run.generate_unique_id()
         self.context.metadata.start_time = datetime.now()

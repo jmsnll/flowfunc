@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import cached_property
+from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import ClassVar
@@ -12,6 +13,8 @@ from cleo.helpers import argument
 from flowfunc import locations
 from flowfunc.pyproject.toml import PyProjectTOML
 from flowfunc.workflow import context
+from flowfunc.workflow import loader
+from flowfunc.workflow import pipeline
 
 if TYPE_CHECKING:
     from flowfunc.app import FlowFunc
@@ -83,3 +86,15 @@ class WorkflowCommand(Command):
         return [
             argument("workflow"),
         ]
+
+    def load_workflow(self):
+        workflow_path = Path(self.argument("workflow"))
+
+        if not workflow_path.exists():
+            raise FileNotFoundError(f"Workflow file not found: {workflow_path}")
+
+        self.context.workflow.file_path = workflow_path
+        self.context.workflow.model = loader.load_from_path(workflow_path)
+        self.context.workflow.pipeline = pipeline.from_model(
+            loader.load_from_path(workflow_path).spec
+        )

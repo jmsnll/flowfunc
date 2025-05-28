@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+from typing import ClassVar
+
+from cleo.io.inputs.option import Option
 
 from flowfunc.console.commands.command import WorkflowCommand
 from flowfunc.workflow.exceptions import PipelineBuildError  # From existing files
@@ -11,7 +14,12 @@ class ValidateCommand(WorkflowCommand):
     name = "validate"
     description = "Validates a workflow definition, including schema and pipefunc pipeline integrity."
 
+    arguments: ClassVar[list[Option]] = [
+        *WorkflowCommand._group_arguments(),
+    ]
+
     def handle(self) -> int:
+        self.load_workflow()
         self.line(f"<info>Validating workflow: {self.argument('workflow')}</info>")
 
         try:
