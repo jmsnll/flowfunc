@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import click
 import tomlkit
-from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress
 from rich.progress import SpinnerColumn
@@ -11,9 +10,8 @@ from rich.table import Table
 from rich.text import Text
 
 from flowfunc import locations
+from flowfunc.console import console
 from flowfunc.pyproject.toml import load_pyproject
-
-console = Console()
 
 DEFAULTS = {
     "source_directory": "src",

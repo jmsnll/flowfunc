@@ -1,12 +1,10 @@
 from pathlib import Path
 
 import click
-from rich.console import Console
 
 from flowfunc import workflow
+from flowfunc.console import console
 from flowfunc.workflow.context import RunContext
-
-console = Console()
 
 
 @click.command(name="graph", help="Graphs a workflow using matplotlib.")

@@ -1,12 +1,10 @@
 import textwrap
 
 import click
-from rich.console import Console
 from rich.panel import Panel
 
 from flowfunc.__version__ import __version__
-
-console = Console()
+from flowfunc.console import console
 
 
 @click.command(name="about", help="Shows information about FlowFunc.")
