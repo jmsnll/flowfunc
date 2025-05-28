@@ -3,10 +3,11 @@ from __future__ import annotations  # Important for forward references in type h
 from enum import Enum
 from pathlib import Path
 from typing import Any
-from typing import Literal
+from collections.abc import Callable
 
 from pydantic import BaseModel
 from pydantic import Field
+from pydantic import field_validator
 
 
 class KindEnum(str, Enum):
@@ -55,7 +56,7 @@ class PipelineConfig(BaseModel):
     debug: bool | None = None
     profile: bool | None = None
     scope: str | None = None
-    default_resources: StepResources | None = None
+    resources: Resources | None = None
 
     class Config:
         extra = "forbid"
@@ -67,23 +68,18 @@ class GlobalInputItem(BaseModel):
     default: Any | None = None  # Value can be any valid JSON/YAML type
 
 
-class StepResources(BaseModel):
+class Resources(BaseModel):
     cpus: int | None = None
-    gpus: int | None = None
     memory: str | None = None  # e.g., "8GB"
-    wall_time: str | None = None  # e.g., "1:00:00"
-    queue: str | None = None
-    partition: str | None = None
-    parallelization_mode: ParallelizationModeEnum | None = None
-    extra_job_scheduler_args: list[str] | None = None
+    advanced_options: dict[str, Any] | None = None
 
     class Config:
         extra = "allow"
 
 
 class StepOptions(BaseModel):
+    func: Callable | None = None
     output_name: str | list[str] | None = None
-    output_picker: str | None = None  # FQN string
     renames: dict[str, str] | None = None
     defaults: dict[str, Any] | None = None
     bound: dict[str, Any] | None = None
@@ -91,13 +87,8 @@ class StepOptions(BaseModel):
     debug: bool | None = None
     cache: bool | None = None
     mapspec: str | None = None
-    internal_shape: int | Literal["?"] | list[int | Literal["?"]] | None = None
-    post_execution_hook: str | None = None  # FQN string
-    resources: StepResources | None = None
-    resources_variable: str | None = None
-    resources_scope: ResourcesScopeEnum | None = None
     scope: str | None = None
-    variant: str | dict[str, str] | None = None
+    advanced_options: dict[str, Any] | None = None
 
     class Config:
         extra = "forbid"
@@ -105,11 +96,12 @@ class StepOptions(BaseModel):
 
 class Step(BaseModel):
     name: str
-    function: str | None = None  # FQN string, or simple name if default_module is used
+    func: str | None = None  # FQN string, or simple name if default_module is used
     description: str | None = None
     inputs: dict[str, str] | None = Field(default_factory=dict)
     parameters: dict[str, Any] | None = Field(default_factory=dict)
     options: StepOptions | None = Field(default_factory=StepOptions)
+    resources: Resources | None = Field(default_factory=Resources)
 
     class Config:
         extra = "forbid"
@@ -117,7 +109,7 @@ class Step(BaseModel):
 
 class Pipeline(BaseModel):
     default_module: str | None = None
-    pipeline_config: PipelineConfig | None = Field(default_factory=PipelineConfig)
+    config: PipelineConfig | None = Field(default_factory=PipelineConfig)
     global_inputs: dict[str, GlobalInputItem] | None = Field(default_factory=dict)
     steps: list[Step] = Field(..., min_length=1)  # Pydantic v2 uses min_length
     pipeline_outputs: list[str | OutputItem] = Field(default_factory=list)

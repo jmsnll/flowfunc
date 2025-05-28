@@ -68,7 +68,7 @@ def run(
     with console.status("[bold cyan]Loading workflow...", spinner="dots"):
         workflow.load(ctx.workflow, Path(workflow_path))
 
-    ctx.metadata.run_id = workflow.run.generate_unique_id() if not name else name
+    ctx.metadata.run_id = runs.generate_unique_id() if not name else name
     ctx.metadata.start_time = datetime.now()
     ctx.metadata.status = Status.FAILED
     ctx.paths = PathsContext.build(

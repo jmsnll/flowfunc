@@ -11,4 +11,4 @@ def load(ctx: WorkflowContext, workflow_path: Path) -> None:
 
     ctx.file_path = workflow_path
     ctx.model = loader.load_from_path(workflow_path)
-    ctx.pipeline = pipeline.from_model(ctx.model.spec)
+    ctx.pipeline = pipeline.from_model(ctx.model)

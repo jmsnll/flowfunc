@@ -4,22 +4,65 @@ import pipefunc
 
 from flowfunc.utils.python import import_callable
 from flowfunc.workflow.exceptions import PipelineBuildError
-from flowfunc.workflow.schema import Step
+from flowfunc.workflow.schema import Workflow
 
 logger = logging.getLogger(__name__)
 
 
-def from_model(
-    step_model: Step, *, default_module: str | None = None
-) -> pipefunc.PipeFunc:
+def from_model(workflow: Workflow, step_index: int) -> pipefunc.PipeFunc:
     """Create a `pipefunc.PipeFunc` from a `StepModel` instance."""
-    function_path = step_model.function
+    step = workflow.spec.steps[step_index]
+    final_options = step.options.model_dump(exclude_none=True) if step.options else {}
 
+    resolve_function(
+        step,
+        final_options,
+        workflow.spec.default_module,
+    )
+    resolve_input_renames(step, final_options)
+    resolve_input_defaults(final_options, step)
+
+    try:
+        return pipefunc.PipeFunc(**final_options)
+    except Exception as e:
+        raise PipelineBuildError(
+            f"Failed to instantiate PipeFunc for step '{step.name}' "
+            f"(function: '{final_options.func}') with effective options: {final_options}. Error: {e}"
+        ) from e
+
+
+def resolve_input_defaults(final_options, step):
+    if step.parameters:
+        if "defaults" not in final_options:
+            final_options.defaults = {}
+        for param_key, param_value in step.parameters.items():
+            if param_key not in final_options.defaults:
+                final_options.defaults[param_key] = param_value
+
+
+def resolve_input_renames(step, options):
+    renames = {}
+    if step.inputs:
+        for func_arg_name, pipeline_source_name in step.inputs.items():
+            if pipeline_source_name.startswith("$global."):
+                global_var_name = pipeline_source_name.split(".", 1)[1]
+                if func_arg_name != global_var_name:
+                    renames[func_arg_name] = global_var_name
+    if renames:
+        if "renames" in options and isinstance(options.renames, dict):
+            options.renames = {**options.renames, **renames}
+        else:
+            options.renames = renames
+    return renames
+
+
+def resolve_function(step, options, default_module):
+    function_path = step.func
     if not function_path:
-        if default_module and step_model.name:
-            function_path = f"{default_module}.{step_model.name}"
+        if default_module and step.name:
+            function_path = f"{default_module}.{step.name}"
             logger.debug(
-                f"Step '{step_model.name}': 'function' not specified. Defaulting to '{function_path}' using default_module and step name."
+                f"Step '{step.name}': 'function' not specified. Defaulting to '{function_path}' using default_module and step name."
             )
         else:
             error_msg_parts = []
@@ -27,51 +70,11 @@ def from_model(
                 error_msg_parts.append(
                     "no 'default_module' is specified in the workflow"
                 )
-            if not step_model.name:
+            if not step.name:
                 error_msg_parts.append("'name' is missing for the step")
 
             detail = " and ".join(error_msg_parts)
             raise PipelineBuildError(
-                f"Step '{step_model.name or '(unnamed step)'}': 'function' is not specified and cannot be defaulted because {detail}."
+                f"Step '{step.name or '(unnamed step)'}': 'function' is not specified and cannot be defaulted because {detail}."
             )
-
-    _callable = import_callable(function_path)
-
-    current_options = (
-        step_model.options.model_dump(exclude_none=True) if step_model.options else {}
-    )
-
-    input_renames = {}
-    if step_model.inputs:
-        for func_arg_name, pipeline_source_name in step_model.inputs.items():
-            if pipeline_source_name.startswith("$global."):
-                global_var_name = pipeline_source_name.split(".", 1)[1]
-                if func_arg_name != global_var_name:
-                    input_renames[func_arg_name] = global_var_name
-
-    if input_renames:
-        if "renames" in current_options and isinstance(
-            current_options["renames"], dict
-        ):
-            current_options["renames"] = {**current_options["renames"], **input_renames}
-        else:
-            current_options["renames"] = input_renames
-
-    if step_model.parameters:
-        if "defaults" not in current_options:
-            current_options["defaults"] = {}
-        for param_key, param_value in step_model.parameters.items():
-            if param_key not in current_options["defaults"]:
-                current_options["defaults"][param_key] = param_value
-
-    try:
-        pf_func = pipefunc.PipeFunc(
-            func=_callable,
-            **current_options,  # Pass the fully prepared options
-        )
-    except Exception as e:
-        raise PipelineBuildError(
-            f"Failed to instantiate PipeFunc for step '{step_model.name}' "
-            f"(function: '{step_model.function}') with effective options: {current_options}. Error: {e}"
-        ) from e
-    return pf_func
+    options["func"] = import_callable(function_path)
