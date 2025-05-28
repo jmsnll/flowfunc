@@ -4,7 +4,7 @@ from typing import cast
 
 from flowfunc import locations
 from flowfunc.io import serializer
-from flowfunc.workflow.run import logger
+from flowfunc.workflow.runs import logger
 from flowfunc.workflow.schema import OutputItem
 
 

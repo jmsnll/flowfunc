@@ -17,7 +17,7 @@ from flowfunc import workflow
 from flowfunc.pyproject.toml import load_flowfunc_toml
 from flowfunc.workflow import inputs
 from flowfunc.workflow import outputs
-from flowfunc.workflow import run
+from flowfunc.workflow import runs
 from flowfunc.workflow.context import PathsContext
 from flowfunc.workflow.context import RunContext
 from flowfunc.workflow.context import Status

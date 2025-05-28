@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from flowfunc.workflow.run import logger
+from flowfunc.workflow.runs import logger
 from flowfunc.workflow.schema import GlobalInputItem
 
 

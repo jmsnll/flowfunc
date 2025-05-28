@@ -11,7 +11,7 @@ from pydantic import Field
 from pydantic.dataclasses import dataclass
 
 from flowfunc.locations import ensure
-from flowfunc.workflow.run import generate_unique_id
+from flowfunc.workflow.runs import generate_unique_id
 from flowfunc.workflow.schema import Workflow
 
 
