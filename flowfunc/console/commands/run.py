@@ -1,100 +1,48 @@
 from __future__ import annotations
 
 import logging
-import traceback
-from datetime import datetime
 from pathlib import Path
-from typing import ClassVar
 
-from cleo.helpers import option
-from cleo.io.inputs.option import Option
+import click
 
-from flowfunc.console.commands.command import WorkflowCommand
-from flowfunc.workflow import inputs
-from flowfunc.workflow import outputs
-from flowfunc.workflow import run
-from flowfunc.workflow.context import PathsContext
+from flowfunc.workflow import runner
+from flowfunc.workflow.context import RunContext
 from flowfunc.workflow.context import Status
+from flowfunc.workflow.utils import generate_unique_id
 
-logger = logging.getLogger(__name__)
 
+@click.command(
+    name="run",
+    help="Runs a workflow, managing run history, outputs, and run-specific caching.",
+)
+@click.option(
+    "--input-file",
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
+    help="Path to a JSON file containing input data for the workflow.",
+    required=False,
+)
+@click.option(
+    "--name",
+    type=str,
+    help="A custom name for this run (will be part of the run ID / directory).",
+    required=False,
+)
+@click.option(
+    "-v", "--verbose", is_flag=True, default=False, help="Enable verbose output."
+)
+@click.argument(
+    "workflow_path",
+    nargs=1,
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
+)
+def run(
+    input_file: click.Path | None, name: str | None, workflow_path: Path, verbose: bool
+) -> None:
+    if not verbose:
+        logging.getLogger().setLevel(logging.INFO)
 
-class RunCommand(WorkflowCommand):
-    name = "run"
-    description = (
-        "Runs a workflow, managing run history, outputs, and run-specific caching."
-    )
+    ctx = RunContext()
+    ctx.metadata.run_id = generate_unique_id(name)
+    runner.execute_pipeline(ctx, workflow_path, input_file)
 
-    arguments: ClassVar[list[Option]] = [
-        *WorkflowCommand._group_arguments(),
-    ]
-
-    options: ClassVar[list[Option]] = [  # type: ignore[assignment]
-        option(
-            "inputs",
-            None,
-            description="Path to a JSON file containing input data for the workflow.",
-            flag=False,
-        ),
-        option(
-            "name",
-            None,
-            description="A custom name for this run (will be part of the run ID / directory).",
-            flag=False,
-        ),
-    ]
-
-    def handle(self) -> int:
-        self.load_workflow()
-
-        self.context.metadata.run_id = run.generate_unique_id()
-        self.context.metadata.start_time = datetime.now()
-        self.context.metadata.status = Status.FAILED
-        self.context.paths = PathsContext.build(
-            self.context.workflow.model.metadata.name,
-            self.context.metadata.run_id,
-            self.toml_config,
-        )
-
-        self.context.metadata.start()
-        try:
-            logger.debug(f"Running paths: {self.context.paths}")
-            logger.info(
-                f"Starting Run ID: {self.context.metadata.run_id} for workflow: {self.context.workflow.model.metadata.name}"
-            )
-            logger.info(
-                f"Initialised run output directories: {self.context.paths.output_dir} for workflow: {self.context.workflow.model.metadata.name}"
-            )
-
-            if input_file_path := self.option("inputs"):
-                input_file_path = Path(input_file_path)
-
-                self.context.inputs.user_inputs = inputs.from_file(input_file_path)
-
-            self.context.inputs.resolved_inputs = inputs.resolve(
-                self.context.inputs.user_inputs,
-                self.context.workflow.model.spec.global_inputs,
-                self.context.workflow.pipeline.info().get("inputs", tuple()),
-                self.context.workflow.pipeline.info().get("required_inputs", []),
-            )
-
-            self.context.outputs.results = self.context.workflow.pipeline.map(
-                self.context.inputs.resolved_inputs
-            )
-            self.context.metadata.status = Status.SUCCESS.value
-
-            self.context.outputs.persisted_outputs = outputs.persist_workflow_outputs(
-                self.context.outputs.results,
-                self.context.workflow.model.spec.pipeline_outputs,
-                self.context.paths.output_dir,
-            )
-        except Exception as e:
-            logger.error(
-                f"An unexpected error occurred during workflow run {self.context.metadata.run_id}: {e}"
-            )
-            if self.io.is_debug() or self.io.is_very_verbose():
-                traceback.print_exc()
-        finally:
-            self.context.save_summary()
-
-        return 0 if self.context.metadata.status == Status.SUCCESS else 1
+    raise SystemExit(0 if ctx.metadata.status == Status.SUCCESS else 1)

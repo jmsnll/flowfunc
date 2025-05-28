@@ -1,21 +1,36 @@
 import pipefunc
 
-from flowfunc.workflow import function as workflow_function
-from flowfunc.workflow.schema import Pipeline
+from flowfunc.workflow import function
+from flowfunc.workflow.schema import Workflow
 
 
-def from_model(spec: Pipeline) -> pipefunc.Pipeline:
+def resolve_scope(spec) -> None:
+    scope = spec.config.scope
+    if scope:
+        scoped_global_inputs = {
+            f"{scope}.{name}": value for name, value in spec.global_inputs.items()
+        }
+        scoped_outputs = {
+            f"{scope}.{name}": value for name, value in spec.outputs.items()
+        }
+        spec.global_inputs = scoped_global_inputs
+        spec.outputs = scoped_outputs
+
+
+def from_model(workflow: Workflow) -> pipefunc.Pipeline:
     functions = []
-    for step_model_instance in spec.steps:
-        pf_function = workflow_function.from_model(
-            step_model_instance, default_module=spec.default_module
-        )
+    for index, _ in enumerate(workflow.spec.steps):
+        pf_function = function.from_model(workflow, step_index=index)
         functions.append(pf_function)
 
     pipeline_constructor_args = {}
-    if spec.pipeline_config:
-        config_data = spec.pipeline_config.model_dump(exclude_none=True)
+    if workflow.spec.config:
+        config_data = workflow.spec.config.model_dump(
+            exclude_none=True, exclude_unset=True
+        )
         for key, value in config_data.items():
             pipeline_constructor_args[key] = value
+
+    resolve_scope(workflow.spec)
 
     return pipefunc.Pipeline(functions, **pipeline_constructor_args)

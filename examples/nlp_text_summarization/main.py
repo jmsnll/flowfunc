@@ -14,10 +14,7 @@ def tokenize_text(text):
 
     words = word_tokenize(text.lower())
     stop_words = set(stopwords.words("english"))
-    filtered_words = [
-        word for word in words if word.isalpha() and word not in stop_words
-    ]
-    return filtered_words
+    return [word for word in words if word.isalpha() and word not in stop_words]
 
 
 # Step 2: Keyword Extraction
@@ -39,7 +36,7 @@ def generate_summary(text, keywords):
 
 
 # Step 4: Sentiment Analysis
-def analyze_sentiment(summary):
+def analyze_sentiment(summary) -> str:
     # Simplified sentiment analysis: More positive words = Positive sentiment
     positive_words = {"good", "great", "excellent", "positive", "fortunate"}
     negative_words = {"bad", "terrible", "poor", "negative", "unfortunate"}

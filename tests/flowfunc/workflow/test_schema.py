@@ -54,8 +54,8 @@ def test_workflow_yaml_init_file_not_found(tmp_path: Path) -> None:
         loader.load_from_path(non_existent_file)
 
 
-def test_workflow_yaml_check_model_valid(load_example_path: pytest.fixture) -> None:
-    file_path = load_example_path("image_processing")
+def test_workflow_yaml_check_model_valid(load_example: pytest.fixture) -> None:
+    file_path = load_example("image_processing")
     _ = loader.load_from_path(file_path)
 
 

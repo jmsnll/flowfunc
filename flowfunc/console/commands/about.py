@@ -1,26 +1,20 @@
-from __future__ import annotations
-
 import textwrap
 
-from flowfunc.console.commands.command import Command
+import click
+from rich.panel import Panel
+
+from flowfunc.__version__ import __version__
+from flowfunc.console import console
 
 
-class AboutCommand(Command):
-    name = "about"
-    description = "Shows information about FlowFunc."
+@click.command(name="about", help="Shows information about FlowFunc.")
+def about() -> None:
+    info_text = textwrap.dedent(f"""
+        FlowFunc – A wrapper around pipefunc for managing workflows.
 
-    def handle(self) -> int:
-        from importlib import metadata
+        Version: {__version__}
+    """)
 
-        self.line(
-            textwrap.dedent(
-                f"""\
-            <info>FlowFunc - A wrapper around pipefunc for managing workflows.
-
-            Version: {metadata.version("flowfunc")}
-            </info>
-            """
-            )
-        )
-
-        return 0
+    console.print(
+        Panel.fit(info_text.strip(), title="About FlowFunc", border_style="cyan")
+    )

@@ -3,6 +3,10 @@ from pathlib import Path
 import pytest
 import yaml
 
+from flowfunc import locations
+from flowfunc.workflow import loader
+from flowfunc.workflow.schema import Workflow
+
 
 @pytest.fixture
 def write_yaml(temp_path):
@@ -51,11 +55,14 @@ def load_example_workflow():
         config = load_example_workflow("my_example")
     """
 
-    def _loader(example_name: str) -> dict:
-        path = Path("examples") / example_name / "workflow.yaml"
+    def _loader(example_name: str) -> Workflow:
+        path = (
+            locations.project_root() / Path("examples") / example_name / "workflow.yaml"
+        )
         if not path.exists():
             raise FileNotFoundError(f"Workflow not found at {path}")
-        with path.open("rb") as f:
-            return yaml.safe_load(f)
+        with path.open("rb"):
+            return loader.load_from_path(path)
+            # return yaml.safe_load(f)
 
     return _loader

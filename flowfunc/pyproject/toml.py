@@ -6,8 +6,10 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 from tomlkit.toml_document import TOMLDocument
+from tomlkit.toml_file import TOMLFile
 
-from flowfunc.toml import TOMLFile
+from flowfunc import locations
+from flowfunc.toml import TOMLFile as internaltomlfile
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -87,11 +89,11 @@ class BasePyProjectTOML:
 class PyProjectTOML(BasePyProjectTOML):
     def __init__(self, path: Path) -> None:
         super().__init__(path)
-        self._toml_file = TOMLFile(path=path)
+        self._toml_file = internaltomlfile(path=path)
         self._toml_document: TOMLDocument | None = None
 
     @property
-    def file(self) -> TOMLFile:
+    def file(self) -> internaltomlfile:
         return self._toml_file
 
     @property
@@ -109,3 +111,16 @@ class PyProjectTOML(BasePyProjectTOML):
 
     def reload(self) -> None:
         self._toml_document = None
+
+
+def load_pyproject(path: Path | None = None) -> TOMLFile:
+    path = path or locations.project_root() / "pyproject.toml"
+    if not path.exists() or not path.is_file():
+        raise FileNotFoundError("Failed to load pyproject.toml")
+    return TOMLFile(path)
+
+
+def load_flowfunc_toml(path: Path | None = None) -> TOMLDocument:
+    pyproject_file = load_pyproject(path)
+    pyproject_document = pyproject_file.read()
+    return pyproject_document.get("tools", {}).get("flowfunc", {})

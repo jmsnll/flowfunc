@@ -1,16 +1,16 @@
+import logging
 from pathlib import Path
 from typing import Any
-from typing import cast
 
 from flowfunc import locations
 from flowfunc.io import serializer
-from flowfunc.workflow.run import logger
-from flowfunc.workflow.schema import OutputItem
+
+logger = logging.getLogger(__name__)
 
 
 def persist_workflow_outputs(
     workflow_results: dict[str, Any],
-    workflow_output_definitions: list[OutputItem | str] | None,
+    workflow_output_definitions: dict[str, str] | None,
     target_output_directory: Path,
 ) -> dict[str, str]:
     """
@@ -27,40 +27,31 @@ def persist_workflow_outputs(
         )
         return manifest
 
-    for output_definition in workflow_output_definitions:
-        if isinstance(output_definition, str):
-            # Output declared by name only, not explicitly saved by this function
-            if output_definition in workflow_results:
-                logger.warning(
-                    f"Output '{output_definition}' declared by name only: Value present in results, but not saved."
-                )
-            continue
-
-        output_item = cast("PipelineOutputItem", output_definition)
-        if not output_item.path:
+    for output_name, output_path in workflow_output_definitions.items():
+        if not output_path:
             logger.debug(
-                f"Output '{output_item.name}' has no 'path' defined; skipping persistence."
+                f"Output '{output_name}' has no 'path' defined; skipping persistence."
             )
             continue
-        if output_item.name not in workflow_results:
+        if output_name not in workflow_results:
             logger.warning(
-                f"Output '{output_item.name}' defined with path '{output_item.path}' but not found in pipefunc results; skipping."
+                f"Output '{output_name}' defined with path '{output_path}' but not found in pipefunc results; skipping."
             )
             continue
 
         # Ensure path is not absolute, resolve relative to target_output_directory
-        target_save_path = (target_output_directory / output_item.path).resolve()
+        target_save_path = (target_output_directory / output_path).resolve()
 
         try:
             relative_path_str = _serialize_output(
-                workflow_results[output_item.name].output,
-                output_name=output_item.name,
+                workflow_results[output_name].output,
+                output_name=output_name,
                 target_path=target_save_path,
             )
-            manifest[output_item.name] = relative_path_str
+            manifest[output_name] = relative_path_str
         except Exception as e:
             raise OSError(
-                f"Serialization/DiskIO failed for output '{output_item.name}' to '{target_save_path}': {e}"
+                f"Serialization/DiskIO failed for output '{output_name}' to '{target_save_path}': {e}"
             ) from e
 
     logger.info(f"Output persistence complete. Manifest: {manifest}")

@@ -1,36 +1,27 @@
 from pathlib import Path
 
 import pytest
+import yaml
+
+from flowfunc import locations
 
 
 @pytest.fixture
-def load_example_path(examples_dir: Path):
+def load_example():
     """
-    Returns a function to access examples/{name}/workflow.yaml as a dict.
+    Load examples/{example_name}/workflow.yaml as a dict.
 
     Usage:
-        path = example_path("minimal")
+        config = load_example_workflow("my_example")
     """
 
-    def _get_path(name: str) -> Path:
-        path = examples_dir / name / "workflow.yaml"
+    def _loader(example_name: str) -> dict:
+        path = (
+            locations.project_root() / Path("examples") / example_name / "workflow.yaml"
+        )
         if not path.exists():
-            raise FileNotFoundError(f"No workflow.yaml at {path}")
-        return path
+            raise FileNotFoundError(f"Workflow not found at {path}")
+        with path.open("rb") as f:
+            return yaml.safe_load(f)
 
-    return _get_path
-
-
-@pytest.fixture
-def load_example(load_example_path: Path, load_yaml):
-    """
-    Returns a function to access examples/{name}/workflow.yaml as a dict.
-
-    Usage:
-        path = example_path("minimal")
-    """
-
-    def _load_path(name: str) -> dict:
-        return load_yaml(load_example_path)
-
-    return _load_path
+    return _loader

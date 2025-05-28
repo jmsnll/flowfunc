@@ -1,9 +1,11 @@
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
-from flowfunc.workflow.run import logger
 from flowfunc.workflow.schema import GlobalInputItem
+
+logger = logging.getLogger(__name__)
 
 
 def from_file(file_path: Path) -> dict[str, Any]:
@@ -45,11 +47,16 @@ def from_json(json_str: str) -> dict[str, Any]:
     return data
 
 
+def input_has_scope(input_name: str) -> bool:
+    return len(input_name.split(".")) > 1
+
+
 def resolve(
-    initial_inputs: dict[str, Any],
+    user_inputs: dict[str, Any],
     global_input_definitions: dict[str, GlobalInputItem] | None,
     pipeline_expected_input_names: tuple[str, ...],
     pipeline_required_input_names: list[str],
+    scope: str | None,
 ) -> dict[str, Any]:
     """
     Applies defaults to initial inputs and validates against required inputs.
@@ -57,7 +64,17 @@ def resolve(
     Raises EnvironmentError if validation fails.
     """
     logger.debug("Resolving effective inputs...")
-    resolved = initial_inputs.copy()
+    resolved = {}
+    for name, definition in user_inputs.items():
+        resolved_name = name
+        if not input_has_scope(name):
+            resolved_name = f"{scope}.{name}"
+            logger.info(
+                f"Input name '{name}' missing scope; "
+                f"automatically prefixed with pipeline scope '{scope}' -> '{resolved_name}'"
+            )
+        resolved[resolved_name] = definition
+
     expected_set = set(pipeline_expected_input_names)
 
     if global_input_definitions:
@@ -79,7 +96,6 @@ def resolve(
         logger.debug("No global input definitions found in workflow model.")
 
     if missing := sorted(set(pipeline_required_input_names) - resolved.keys()):
-        logger.error(f"Validation failed. Missing required inputs: {missing}")
         raise ValueError(f"Validation failed. Missing required inputs: {missing}")
 
     logger.info("Effective inputs resolved and validated successfully.")
