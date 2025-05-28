@@ -6,7 +6,6 @@ authors = [{ name = "James Neill", email = "hello@jamesneill.codes" }]
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-  "cleo>=2.1.0",
   "pipefunc[all]>=0.76.0",
   "platformdirs>=4.3.8",
   "rich>=14.0.0",

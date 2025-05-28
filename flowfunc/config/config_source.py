@@ -4,13 +4,8 @@ import dataclasses
 import json
 from abc import ABC
 from abc import abstractmethod
-from typing import TYPE_CHECKING
 from typing import Any
 
-from cleo.io.null_io import NullIO
-
-if TYPE_CHECKING:
-    from cleo.io.io import IO
 
 
 UNSET = object()
@@ -37,8 +32,7 @@ class ConfigSourceMigration:
     new_key: str | None
     value_migration: dict[Any, Any] = dataclasses.field(default_factory=dict)
 
-    def dry_run(self, config_source: ConfigSource, io: IO | None = None) -> bool:
-        io = io or NullIO()
+    def dry_run(self, config_source: ConfigSource) -> bool:
 
         try:
             old_value = config_source.get_property(self.old_key)
@@ -58,7 +52,8 @@ class ConfigSourceMigration:
         elif self.new_key and new_value is UNSET:
             msg += f" -> <c1>{self.new_key}</c1> = <c2>Not explicit set</c2>"
 
-        io.write_line(msg)
+        # TODO: use rich
+        print(msg)
 
         return True
 

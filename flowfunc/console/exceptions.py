@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from cleo.exceptions import CleoError
+from click import ClickException
 
 
-class FlowFuncConsoleError(CleoError):
+class FlowFuncConsoleError(ClickException):
     pass
