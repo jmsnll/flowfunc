@@ -5,7 +5,7 @@ import yaml
 
 from flowfunc.workflow import loader
 from flowfunc.workflow.exceptions import WorkflowLoadError
-from flowfunc.workflow.schema import FlowFuncPipelineModel
+from flowfunc.workflow.schema import Workflow
 
 
 @pytest.fixture
@@ -68,7 +68,7 @@ def test_model_loads_valid_yaml(
 
     model = loader.load_from_path(file_path)
 
-    assert isinstance(model, FlowFuncPipelineModel)
+    assert isinstance(model, Workflow)
     assert model.metadata.name == "minimal-pipeline"
     assert len(model.spec.steps) == 1
     assert model.spec.steps[0].name == "minimal_step"

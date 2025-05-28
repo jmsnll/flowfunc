@@ -5,12 +5,12 @@ from typing import cast
 from flowfunc import locations
 from flowfunc.io import serializer
 from flowfunc.workflow.run import logger
-from flowfunc.workflow.schema import PipelineOutputItem
+from flowfunc.workflow.schema import OutputItem
 
 
 def persist_workflow_outputs(
     workflow_results: dict[str, Any],
-    workflow_output_definitions: list[PipelineOutputItem | str] | None,
+    workflow_output_definitions: list[OutputItem | str] | None,
     target_output_directory: Path,
 ) -> dict[str, str]:
     """

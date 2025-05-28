@@ -1,10 +1,10 @@
 import pipefunc
 
 from flowfunc.workflow import function as workflow_function
-from flowfunc.workflow.schema import PipelineSpecModel
+from flowfunc.workflow.schema import Pipeline
 
 
-def from_model(spec: PipelineSpecModel) -> pipefunc.Pipeline:
+def from_model(spec: Pipeline) -> pipefunc.Pipeline:
     functions = []
     for step_model_instance in spec.steps:
         pf_function = workflow_function.from_model(

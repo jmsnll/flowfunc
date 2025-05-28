@@ -4,13 +4,13 @@ import pipefunc
 
 from flowfunc.utils.python import import_callable
 from flowfunc.workflow.exceptions import PipelineBuildError
-from flowfunc.workflow.schema import StepModel
+from flowfunc.workflow.schema import Step
 
 logger = logging.getLogger(__name__)
 
 
 def from_model(
-    step_model: StepModel, *, default_module: str | None = None
+    step_model: Step, *, default_module: str | None = None
 ) -> pipefunc.PipeFunc:
     """Create a `pipefunc.PipeFunc` from a `StepModel` instance."""
     function_path = step_model.function

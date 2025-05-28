@@ -8,7 +8,7 @@ from cleo.helpers import option
 from cleo.io.inputs.option import Option
 
 from flowfunc.console.commands.command import Command
-from flowfunc.workflow.schema import FlowFuncPipelineModel
+from flowfunc.workflow.schema import Workflow
 
 
 class GenerateSchemaCommand(Command):
@@ -55,7 +55,7 @@ class GenerateSchemaCommand(Command):
             else:
                 indent = 2  # Default indent
 
-            schema_dict = FlowFuncPipelineModel.model_json_schema()
+            schema_dict = Workflow.model_json_schema()
             schema_json_str = json.dumps(schema_dict, indent=indent)
 
             output_path_str = self.option("output")

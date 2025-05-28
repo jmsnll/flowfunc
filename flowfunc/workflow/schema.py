@@ -18,7 +18,7 @@ class GlobalInputTypeEnum(str, Enum):
     NUMBER = "number"
     INTEGER = "integer"
     BOOLEAN = "boolean"
-    ARRAY = "array"
+    LIST = "list"
     OBJECT = "object"
 
 
@@ -31,7 +31,7 @@ class ParallelizationModeEnum(str, Enum):  # From all_docs.md (slurm)
     INTERNAL = "internal"
 
 
-class MetadataModel(BaseModel):
+class Metadata(BaseModel):
     name: str = Field(..., pattern=r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
     version: str | None = None
     description: str | None = None
@@ -39,19 +39,15 @@ class MetadataModel(BaseModel):
     annotations: dict[str, str] | None = None
 
 
-class PipelineOutputItem(BaseModel):  # New model for detailed output definition
-    name: str  # Name of the output from pipefunc results (e.g., "step_name.output_key")
-    path: Path | None = (
-        None  # Optional: path to save this output, relative to run's output dir
-    )
-    # format: str | None = None # Optional: if flowfunc needs to handle serialization (e.g., "csv", "json", "parquet")
-    # persist: bool = True # Implicitly true if path is given
+class OutputItem(BaseModel):
+    name: str
+    path: Path | None = None
 
     class Config:
         extra = "forbid"
 
 
-class PipelineConfigModel(BaseModel):
+class PipelineConfig(BaseModel):
     validate_type_annotations: bool | None = None
     default_variant: str | dict[str, str] | None = None
 
@@ -59,10 +55,10 @@ class PipelineConfigModel(BaseModel):
     debug: bool | None = None
     profile: bool | None = None
     scope: str | None = None
-    default_resources: ResourcesModel | None = None
+    default_resources: StepResources | None = None
 
     class Config:
-        extra = "forbid"  # Corresponds to additionalProperties: false
+        extra = "forbid"
 
 
 class GlobalInputItem(BaseModel):
@@ -71,7 +67,7 @@ class GlobalInputItem(BaseModel):
     default: Any | None = None  # Value can be any valid JSON/YAML type
 
 
-class ResourcesModel(BaseModel):  # From pipefunc_options.resources
+class StepResources(BaseModel):
     cpus: int | None = None
     gpus: int | None = None
     memory: str | None = None  # e.g., "8GB"
@@ -82,10 +78,10 @@ class ResourcesModel(BaseModel):  # From pipefunc_options.resources
     extra_job_scheduler_args: list[str] | None = None
 
     class Config:
-        extra = "allow"  # Corresponds to additionalProperties: true in schema
+        extra = "allow"
 
 
-class PipefuncOptionsModel(BaseModel):
+class StepOptions(BaseModel):
     output_name: str | list[str] | None = None
     output_picker: str | None = None  # FQN string
     renames: dict[str, str] | None = None
@@ -97,55 +93,46 @@ class PipefuncOptionsModel(BaseModel):
     mapspec: str | None = None
     internal_shape: int | Literal["?"] | list[int | Literal["?"]] | None = None
     post_execution_hook: str | None = None  # FQN string
-    resources: ResourcesModel | None = None  # Using the nested model
+    resources: StepResources | None = None
     resources_variable: str | None = None
     resources_scope: ResourcesScopeEnum | None = None
     scope: str | None = None
-    # For variant, string or dict. Keys in dict are strings.
-    # Convention for default group ('_default_') handled in processing logic.
     variant: str | dict[str, str] | None = None
 
     class Config:
         extra = "forbid"
 
 
-class StepModel(BaseModel):
+class Step(BaseModel):
     name: str
     function: str | None = None  # FQN string, or simple name if default_module is used
     description: str | None = None
-    inputs: dict[str, str] | None = Field(default_factory=dict)  # Default to empty dict
-    parameters: dict[str, Any] | None = Field(
-        default_factory=dict
-    )  # Default to empty dict
-    options: PipefuncOptionsModel | None = Field(
-        default_factory=PipefuncOptionsModel
-    )  # Default to empty options
+    inputs: dict[str, str] | None = Field(default_factory=dict)
+    parameters: dict[str, Any] | None = Field(default_factory=dict)
+    options: StepOptions | None = Field(default_factory=StepOptions)
 
     class Config:
         extra = "forbid"
 
 
-class PipelineSpecModel(BaseModel):
+class Pipeline(BaseModel):
     default_module: str | None = None
-    pipeline_config: PipelineConfigModel | None = Field(
-        default_factory=PipelineConfigModel
-    )
+    pipeline_config: PipelineConfig | None = Field(default_factory=PipelineConfig)
     global_inputs: dict[str, GlobalInputItem] | None = Field(default_factory=dict)
-    steps: list[StepModel] = Field(..., min_length=1)  # Pydantic v2 uses min_length
-    pipeline_outputs: list[str | PipelineOutputItem] = Field(default_factory=list)
+    steps: list[Step] = Field(..., min_length=1)  # Pydantic v2 uses min_length
+    pipeline_outputs: list[str | OutputItem] = Field(default_factory=list)
 
     class Config:
         extra = "forbid"
 
 
-class FlowFuncPipelineModel(BaseModel):
+class Workflow(BaseModel):
     apiVersion: str = Field(
         ..., pattern=r"^flowfunc\.dev\/v[0-9]+(?:alpha[0-9]+|beta[0-9]+)?$"
     )
     kind: KindEnum
-    metadata: MetadataModel
-    spec: PipelineSpecModel
+    metadata: Metadata
+    spec: Pipeline
 
     class Config:
         extra = "forbid"
-

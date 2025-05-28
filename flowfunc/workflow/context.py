@@ -12,7 +12,7 @@ from pydantic.dataclasses import dataclass
 
 from flowfunc.locations import ensure
 from flowfunc.workflow.run import generate_unique_id
-from flowfunc.workflow.schema import FlowFuncPipelineModel
+from flowfunc.workflow.schema import Workflow
 
 
 class Status(enum.Enum):
@@ -83,7 +83,7 @@ class PathsContext:
 @dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class WorkflowContext:
     pipeline: Pipeline | None = None
-    model: FlowFuncPipelineModel | None = None
+    model: Workflow | None = None
     file_path: Path | None = None
 
 

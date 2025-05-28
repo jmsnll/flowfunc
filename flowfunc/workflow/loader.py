@@ -8,13 +8,13 @@ from pydantic import ValidationError
 from flowfunc.core.exceptions import FlowFuncCoreError
 from flowfunc.workflow.exceptions import WorkflowLoadError
 from flowfunc.workflow.exceptions import WorkflowSchemaValidationError
-from flowfunc.workflow.schema import FlowFuncPipelineModel
+from flowfunc.workflow.schema import Workflow
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-def load_from_dict(raw_data: dict) -> FlowFuncPipelineModel:
+def load_from_dict(raw_data: dict) -> Workflow:
     if raw_data is None:
         raise WorkflowLoadError(
             "Workflow file is empty or contains no parsable content."
@@ -27,7 +27,7 @@ def load_from_dict(raw_data: dict) -> FlowFuncPipelineModel:
         )
 
     try:
-        return FlowFuncPipelineModel.model_validate(raw_data)
+        return Workflow.model_validate(raw_data)
     except ValidationError as e:
         error_details = e.errors()
         formatted_errors = "\n".join(
@@ -41,7 +41,7 @@ def load_from_dict(raw_data: dict) -> FlowFuncPipelineModel:
         ) from e
 
 
-def load_from_path(path: Path) -> FlowFuncPipelineModel:
+def load_from_path(path: Path) -> Workflow:
     try:
         with path.open("rb") as f:
             raw_data = yaml.safe_load(f)
