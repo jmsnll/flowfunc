@@ -1,29 +1,14 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import click
-from rich.logging import RichHandler
-from rich.traceback import install
 
-from flowfunc.console import console
 from flowfunc.workflow import runner
 from flowfunc.workflow.context import RunContext
 from flowfunc.workflow.context import Status
 from flowfunc.workflow.utils import generate_unique_id
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-install(show_locals=True, width=200)
-logging.basicConfig(
-    level="DEBUG",
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(console=console, rich_tracebacks=True)],
-)
-logger = logging.getLogger("flowfunc")
 
 
 @click.command(
@@ -32,7 +17,7 @@ logger = logging.getLogger("flowfunc")
 )
 @click.option(
     "--input-file",
-    type=click.Path(exists=True, dir_okay=False, readable=True),
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
     help="Path to a JSON file containing input data for the workflow.",
     required=False,
 )
@@ -48,7 +33,7 @@ logger = logging.getLogger("flowfunc")
 @click.argument(
     "workflow_path",
     nargs=1,
-    type=click.Path(exists=True, dir_okay=False, readable=True),
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
 )
 def run(
     input_file: click.Path | None, name: str | None, workflow_path: Path, verbose: bool

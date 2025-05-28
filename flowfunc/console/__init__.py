@@ -1,10 +1,21 @@
 import functools
+import logging
 from collections.abc import Callable
 from typing import TypeVar
 
 from rich.console import Console as RichConsole
+from rich.logging import RichHandler
+from rich.traceback import install
 
 console = RichConsole()
+install(show_locals=True, width=200)
+logging.basicConfig(
+    level="DEBUG",
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(console=console, rich_tracebacks=True)],
+)
+logger = logging.getLogger(__name__)
 
 F = TypeVar("F", bound=Callable[..., object])
 
