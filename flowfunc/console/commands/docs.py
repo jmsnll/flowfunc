@@ -8,5 +8,5 @@ class DocsCommand(WorkflowCommand):
     description = "Displays the documentation for a workflow."
 
     def handle(self) -> int:
-        self.workflow.print_documentation()
+        self.context.workflow.pipeline.print_documentation()
         return 0

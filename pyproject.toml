@@ -9,6 +9,7 @@ dependencies = [
   "cleo>=2.1.0",
   "pipefunc[all]>=0.76.0",
   "platformdirs>=4.3.8",
+  "rich>=14.0.0",
   "tomlkit>=0.13.2",
 ]
 

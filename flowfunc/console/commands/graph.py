@@ -8,5 +8,5 @@ class GraphCommand(WorkflowCommand):
     description: str = "Graphs a workflow."
 
     def handle(self) -> int:
-        self.workflow.visualize_matplotlib()
+        self.context.workflow.pipeline.visualize_matplotlib()
         return 0

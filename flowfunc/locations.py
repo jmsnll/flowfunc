@@ -8,6 +8,7 @@ from platformdirs import user_data_path
 
 from flowfunc.__version__ import APP_NAME
 from flowfunc.env import get_prefix_env
+from flowfunc.utils import helpers
 
 DEFAULT_CACHE_DIR = user_cache_path(APP_NAME, appauthor=False)
 CONFIG_DIR = Path(
@@ -41,3 +42,29 @@ def project_root(markers=None) -> Path:
             return parent
 
     return current
+
+
+def workflow_run_dir(run_id: str, workflow_name: str, dir_name: str) -> Path:
+    base_dir = project_root() / dir_name
+    sanitized_workflow_name = helpers.sanitize_string(workflow_name)
+    return base_dir / sanitized_workflow_name / run_id
+
+
+def workflow_run_dir_actual(toml_config, workflow_name, run_id) -> Path:
+    runs_directory_relative = toml_config.get("runs_directory", "runs")
+    runs_directory_absolute = project_root() / runs_directory_relative
+    sanitized_workflow_name = helpers.sanitize_string(workflow_name)
+    return runs_directory_absolute / sanitized_workflow_name / run_id
+
+
+def workflow_output_dir(run_dir: Path) -> Path:
+    return run_dir / "outputs"
+
+
+def workflow_cache_dir(run_dir: Path) -> Path:
+    return run_dir / ".pipefunc_cache"
+
+
+def ensure(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    return path

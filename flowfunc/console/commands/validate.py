@@ -15,13 +15,13 @@ class ValidateCommand(WorkflowCommand):
         self.line(f"<info>Validating workflow: {self.argument('workflow')}</info>")
 
         try:
-            if self.workflow:
+            if self.context.workflow.pipeline:
                 self.line("<comment>Schema and basic structure: OK</comment>")
 
             self.line(
                 "<info>Performing detailed pipefunc pipeline validation...</info>"
             )
-            self.workflow.validate()
+            self.context.workflow.pipeline.validate()
             self.line("<comment>Pipefunc pipeline integrity: OK</comment>")
             self.line("<info>Validation successful. The workflow is valid.</info>")
             return 0

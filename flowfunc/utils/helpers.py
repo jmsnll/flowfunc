@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from collections.abc import Mapping
 from contextlib import contextmanager
 from pathlib import Path
@@ -44,3 +45,9 @@ def pluralize(count: int, word: str = "") -> str:
     if count == 1:
         return word
     return word + "s"
+
+
+def sanitize_string(data: str) -> str:
+    sanitized = "".join(c if c.isalnum() or c in ["-", "_"] else "_" for c in data)
+    remove_duplicate_underscores = re.sub(r"_+", "_", sanitized)
+    return remove_duplicate_underscores.strip("_")
