@@ -1,100 +1,146 @@
 from __future__ import annotations
 
 import logging
-import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import ClassVar
 
-from cleo.helpers import option
-from cleo.io.inputs.option import Option
+import click
+from rich.console import Console
+from rich.logging import RichHandler
+from rich.panel import Panel
+from rich.rule import Rule
+from rich.table import Table
+from rich.text import Text
+from rich.traceback import install
 
-from flowfunc.console.commands.command import WorkflowCommand
+from flowfunc import workflow
+from flowfunc.pyproject.toml import load_flowfunc_toml
 from flowfunc.workflow import inputs
 from flowfunc.workflow import outputs
 from flowfunc.workflow import run
 from flowfunc.workflow.context import PathsContext
+from flowfunc.workflow.context import RunContext
 from flowfunc.workflow.context import Status
 
-logger = logging.getLogger(__name__)
+# Setup Rich
+install(show_locals=True, width=200)
+console = Console()
+logging.basicConfig(
+    level="DEBUG",
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(console=console, rich_tracebacks=True)],
+)
+logger = logging.getLogger("flowfunc")
 
 
-class RunCommand(WorkflowCommand):
-    name = "run"
-    description = (
-        "Runs a workflow, managing run history, outputs, and run-specific caching."
+@click.command(
+    name="run",
+    help="Runs a workflow, managing run history, outputs, and run-specific caching.",
+)
+@click.option(
+    "--input-file",
+    type=click.Path(exists=True, dir_okay=False, readable=True),
+    help="Path to a JSON file containing input data for the workflow.",
+    required=False,
+)
+@click.option(
+    "--name",
+    type=str,
+    help="A custom name for this run (will be part of the run ID / directory).",
+    required=False,
+)
+@click.option(
+    "-v", "--verbose", is_flag=True, default=False, help="Enable verbose output."
+)
+@click.argument(
+    "workflow_path",
+    nargs=1,
+    type=click.Path(exists=True, dir_okay=False, readable=True),
+)
+def run(
+    input_file: click.Path | None, name: str | None, workflow_path: Path, verbose: bool
+) -> None:
+    if not verbose:
+        logging.getLogger().setLevel(logging.INFO)
+
+    ctx = RunContext()
+    with console.status("[bold cyan]Loading workflow...", spinner="dots"):
+        workflow.load(ctx.workflow, Path(workflow_path))
+
+    ctx.metadata.run_id = workflow.run.generate_unique_id() if not name else name
+    ctx.metadata.start_time = datetime.now()
+    ctx.metadata.status = Status.FAILED
+    ctx.paths = PathsContext.build(
+        ctx.workflow.model.metadata.name,
+        ctx.metadata.run_id,
+        load_flowfunc_toml(),
+    )
+    ctx.metadata.start()
+
+    console.print(
+        Rule(
+            title=f"🛠️ Running: [green]{ctx.workflow.model.metadata.name}[/]",
+            style="bold green",
+        )
     )
 
-    arguments: ClassVar[list[Option]] = [
-        *WorkflowCommand._group_arguments(),
-    ]
+    try:
+        logger.info(f"[bold]Run ID:[/] {ctx.metadata.run_id}")
+        logger.info(f"📂 Output directory: {ctx.paths.output_dir}")
 
-    options: ClassVar[list[Option]] = [  # type: ignore[assignment]
-        option(
-            "inputs",
-            None,
-            description="Path to a JSON file containing input data for the workflow.",
-            flag=False,
-        ),
-        option(
-            "name",
-            None,
-            description="A custom name for this run (will be part of the run ID / directory).",
-            flag=False,
-        ),
-    ]
+        if input_file:
+            with console.status("📥 Loading input file...", spinner="point"):
+                ctx.inputs.user_inputs = inputs.from_file(input_file)
+                logger.debug(f"Loaded user input: {ctx.inputs.user_inputs}")
 
-    def handle(self) -> int:
-        self.load_workflow()
+        with console.status("🧩 Resolving inputs...", spinner="bouncingBar"):
+            ctx.inputs.resolved_inputs = inputs.resolve(
+                ctx.inputs.user_inputs,
+                ctx.workflow.model.spec.global_inputs,
+                ctx.workflow.pipeline.info().get("inputs", tuple()),
+                ctx.workflow.pipeline.info().get("required_inputs", []),
+            )
 
-        self.context.metadata.run_id = run.generate_unique_id()
-        self.context.metadata.start_time = datetime.now()
-        self.context.metadata.status = Status.FAILED
-        self.context.paths = PathsContext.build(
-            self.context.workflow.model.metadata.name,
-            self.context.metadata.run_id,
-            self.toml_config,
+        with console.status("⚙️ Executing pipeline...", spinner="earth"):
+            ctx.outputs.results = ctx.workflow.pipeline.map(ctx.inputs.resolved_inputs)
+            ctx.metadata.status = Status.SUCCESS.value
+
+        with console.status("💾 Persisting outputs...", spinner="dots2"):
+            ctx.outputs.persisted_outputs = outputs.persist_workflow_outputs(
+                ctx.outputs.results,
+                ctx.workflow.model.spec.pipeline_outputs,
+                ctx.paths.output_dir,
+            )
+
+        # Summary table
+        table = Table(
+            title="✅ Workflow Completed", show_header=True, header_style="bold magenta"
+        )
+        table.add_column("Output Key")
+        table.add_column("Path", overflow="fold")
+        for k, v in ctx.outputs.persisted_outputs.items():
+            table.add_row(k, str(v))
+        console.print(table)
+
+        console.print(
+            Panel.fit(
+                Text(
+                    f"Run ID: {ctx.metadata.run_id}\nStarted: {ctx.metadata.start_time}\nOutput: {ctx.paths.output_dir}",
+                    style="green",
+                ),
+                title="📝 Summary",
+                border_style="green",
+            )
         )
 
-        self.context.metadata.start()
-        try:
-            logger.debug(f"Running paths: {self.context.paths}")
-            logger.info(
-                f"Starting Run ID: {self.context.metadata.run_id} for workflow: {self.context.workflow.model.metadata.name}"
-            )
-            logger.info(
-                f"Initialised run output directories: {self.context.paths.output_dir} for workflow: {self.context.workflow.model.metadata.name}"
-            )
+    except Exception:
+        console.print_exception(show_locals=True)
+        logger.error(
+            f"[red]An error occurred during workflow run {ctx.metadata.run_id}[/]"
+        )
+    finally:
+        ctx.save_summary()
 
-            if input_file_path := self.option("inputs"):
-                input_file_path = Path(input_file_path)
-
-                self.context.inputs.user_inputs = inputs.from_file(input_file_path)
-
-            self.context.inputs.resolved_inputs = inputs.resolve(
-                self.context.inputs.user_inputs,
-                self.context.workflow.model.spec.global_inputs,
-                self.context.workflow.pipeline.info().get("inputs", tuple()),
-                self.context.workflow.pipeline.info().get("required_inputs", []),
-            )
-
-            self.context.outputs.results = self.context.workflow.pipeline.map(
-                self.context.inputs.resolved_inputs
-            )
-            self.context.metadata.status = Status.SUCCESS.value
-
-            self.context.outputs.persisted_outputs = outputs.persist_workflow_outputs(
-                self.context.outputs.results,
-                self.context.workflow.model.spec.pipeline_outputs,
-                self.context.paths.output_dir,
-            )
-        except Exception as e:
-            logger.error(
-                f"An unexpected error occurred during workflow run {self.context.metadata.run_id}: {e}"
-            )
-            if self.io.is_debug() or self.io.is_very_verbose():
-                traceback.print_exc()
-        finally:
-            self.context.save_summary()
-
-        return 0 if self.context.metadata.status == Status.SUCCESS else 1
+    exit_code = 0 if ctx.metadata.status == Status.SUCCESS else 1
+    raise SystemExit(exit_code)

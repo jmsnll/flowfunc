@@ -1,198 +1,159 @@
-from __future__ import annotations
-
 import textwrap
 from pathlib import Path
-from typing import Any
 
-from cleo.helpers import argument
-from cleo.helpers import option
+import click
+import yaml
+from rich import box
+from rich.console import Console
+from rich.panel import Panel
+from rich.prompt import Prompt
 
-from flowfunc.console.commands.command import Command
+console = Console()
 
 
-class NewCommand(Command):
+@click.command()
+@click.argument("workflow_bundle_name")
+@click.option(
+    "--overwrite", "-o", is_flag=True, help="Overwrite workflow.yaml if it exists."
+)
+@click.option("--force-dir", is_flag=True, help="Allow existing bundle directory.")
+def new(workflow_bundle_name: str, overwrite: bool, force_dir: bool):
     """Creates a new workflow bundle (directory + workflow.yaml file)."""
+    name = workflow_bundle_name
+    root = Path.cwd()
 
-    name = "new"
-    description = "Creates a new workflow bundle (directory + workflow.yaml file)."
-
-    arguments = [
-        argument(
-            "workflow_bundle_name",
-            "Name of the new workflow bundle.",
+    if not name or not name.replace("_", "").replace("-", "").isalnum():
+        console.print(
+            f"[red]Invalid bundle name '{name}'. Use alphanumerics, -, _.[/red]"
         )
-    ]
+        raise click.Abort()
 
-    options = [
-        option("overwrite", "o", "Overwrite workflow.yaml if it exists.", flag=True),
-        option("force-dir", None, "Allow existing bundle directory.", flag=True),
-    ]
+    workflows_base = root / get_project_config_value("workflows_directory", "workflows")
+    bundle_path = workflows_base / name
+    workflow_path = bundle_path / "workflow.yaml"
 
-    def get_project_config_value(self, key: str, default: Any = None) -> Any:
-        try:
-            return (
-                self.pyproject.data.get("tool", {})
-                .get("flowfunc", {})
-                .get(key, default)
-            )
-        except Exception:
-            return default
-
-    def handle(self) -> int:
-        name = self.argument("workflow_bundle_name")
-
-        if not name or not name.replace("_", "").replace("-", "").isalnum():
-            self.line_error(
-                f"<error>Invalid bundle name '{name}'. Use alphanumerics, -, _.</error>"
-            )
-            return 1
-
-        # Resolve base directories
-        root = Path.cwd()
-        workflows_base = root / self.get_project_config_value(
-            "workflows_directory", "workflows"
-        )
-        bundle_path = workflows_base / name
-        workflow_path = bundle_path / "workflow.yaml"
-
-        # Ensure workflows directory exists
-        if not workflows_base.exists():
-            if workflows_base.name == "workflows":
-                try:
-                    workflows_base.mkdir(parents=True)
-                    self.line(
-                        f"<comment>Created workflows directory: {workflows_base.relative_to(root)}</comment>"
-                    )
-                except Exception as e:
-                    self.line_error(
-                        f"<error>Could not create workflows directory: {e}</error>"
-                    )
-                    return 1
-            else:
-                self.line_error(
-                    f"<error>Workflows directory '{workflows_base}' does not exist.</error>"
-                )
-                return 1
-
-        if workflows_base.is_file():
-            self.line_error(
-                f"<error>{workflows_base} exists but is not a directory.</error>"
-            )
-            return 1
-
-        # Handle bundle directory
-        if bundle_path.exists():
-            if not bundle_path.is_dir():
-                self.line_error(
-                    f"<error>{bundle_path.relative_to(root)} exists but is not a directory.</error>"
-                )
-                return 1
-            if not self.option("force-dir"):
-                self.line(
-                    "<comment>Directory exists. Use --force-dir to continue.</comment>"
-                )
-                return 1
-            self.line(
-                f"<warning>Using existing directory: {bundle_path.relative_to(root)}</warning>"
-            )
-        else:
+    if not workflows_base.exists():
+        if workflows_base.name == "workflows":
             try:
-                bundle_path.mkdir(parents=True)
-                self.line(
-                    f"<info>Created bundle directory: {bundle_path.relative_to(root)}</info>"
+                workflows_base.mkdir(parents=True)
+                console.print(
+                    f"[yellow]Created workflows directory: {workflows_base.relative_to(root)}[/yellow]"
                 )
             except Exception as e:
-                self.line_error(
-                    f"<error>Could not create bundle directory: {e}</error>"
-                )
-                return 1
-
-        # Handle workflow.yaml
-        if workflow_path.exists() and not self.option("overwrite"):
-            self.line_error(
-                f"<error>{workflow_path.relative_to(root)} already exists. Use --overwrite to replace.</error>"
+                console.print(f"[red]Could not create workflows directory: {e}[/red]")
+                raise click.Abort()
+        else:
+            console.print(
+                f"[red]Workflows directory '{workflows_base}' does not exist.[/red]"
             )
-            return 1
+            raise click.Abort()
 
-        self.line(f"<info>Creating: {workflow_path.relative_to(root)}</info>")
+    if workflows_base.is_file():
+        console.print(f"[red]{workflows_base} exists but is not a directory.[/red]")
+        raise click.Abort()
 
-        # Gather metadata
-        default_meta_name = name.replace("_", "-")
-        meta_name = self.ask(
-            f"Workflow name (<comment>{default_meta_name}</comment>):",
-            default=default_meta_name,
+    if bundle_path.exists():
+        if not bundle_path.is_dir():
+            console.print(
+                f"[red]{bundle_path.relative_to(root)} exists but is not a directory.[/red]"
+            )
+            raise click.Abort()
+        if not force_dir:
+            console.print(
+                "[yellow]Directory exists. Use --force-dir to continue.[/yellow]"
+            )
+            raise click.Abort()
+        console.print(
+            f"[bold yellow]Using existing directory: {bundle_path.relative_to(root)}[/bold yellow]"
         )
-        meta_version = self.ask(
-            "Workflow version (<comment>0.1.0</comment>):", default="0.1.0"
+    else:
+        try:
+            bundle_path.mkdir(parents=True)
+            console.print(
+                f"[green]Created bundle directory: {bundle_path.relative_to(root)}[/green]"
+            )
+        except Exception as e:
+            console.print(f"[red]Could not create bundle directory: {e}[/red]")
+            raise click.Abort()
+
+    if workflow_path.exists() and not overwrite:
+        console.print(
+            f"[red]{workflow_path.relative_to(root)} already exists. Use --overwrite to replace.[/red]"
         )
-        meta_description = self.ask("Workflow description (optional):", default="")
+        raise click.Abort()
 
-        default_src = self.get_project_config_value("source_directory", "src")
-        default_module = f"{default_src.replace('/', '.')}.{name}_functions"
-        spec_module = self.ask(
-            f"Default Python module (optional, e.g. <comment>{default_module}</comment>):",
-            default=None,
-        )
+    default_meta_name = name.replace("_", "-")
+    meta_name = Prompt.ask("Workflow name", default=default_meta_name)
+    meta_version = Prompt.ask("Workflow version", default="0.1.0")
+    meta_description = Prompt.ask("Workflow description (optional)", default="")
 
-        # Build workflow.yaml content
-        step = {
-            "name": "example_step",
-            "description": "A placeholder step. Implement its function and adjust inputs/outputs.",
-            "inputs": {"input_arg1": "$global.example_global_input"},
-            "options": {"output_name": "example_output"},
-        }
+    default_src = get_project_config_value("source_directory", "src")
+    default_module = rf"{default_src.replace('/', '.')}\.{name}_functions"
+    spec_module = Prompt.ask(
+        "Default Python module (optional)", default="", show_default=False
+    )
 
-        if not spec_module:
-            step["function"] = f"your_custom_module.{name}_example_step_function"
+    step = {
+        "name": "example_step",
+        "description": "A placeholder step. Implement its function and adjust inputs/outputs.",
+        "inputs": {"input_arg1": "$global.example_global_input"},
+        "options": {"output_name": "example_output"},
+    }
+    if not spec_module:
+        step["function"] = f"your_custom_module.{name}_example_step_function"
 
-        workflow_content = {
-            "apiVersion": "flowfunc.dev/v1beta1",
-            "kind": "Pipeline",
-            "metadata": {
-                "name": meta_name,
-                "version": meta_version,
+    workflow_content = {
+        "apiVersion": "flowfunc.dev/v1beta1",
+        "kind": "Pipeline",
+        "metadata": {
+            "name": meta_name,
+            "version": meta_version,
+        },
+        "spec": {
+            "global_inputs": {
+                "example_global_input": {
+                    "description": "An example global input for this workflow.",
+                    "type": "string",
+                    "default": "hello from bundle",
+                }
             },
-            "spec": {
-                "global_inputs": {
-                    "example_global_input": {
-                        "description": "An example global input for this workflow.",
-                        "type": "string",
-                        "default": "hello from bundle",
-                    }
-                },
-                "steps": [step],
-                "pipeline_outputs": ["example_step.example_output"],
-            },
-        }
+            "steps": [step],
+            "pipeline_outputs": ["example_step.example_output"],
+        },
+    }
+    if meta_description:
+        workflow_content["metadata"]["description"] = meta_description
+    if spec_module:
+        workflow_content["spec"]["default_module"] = spec_module
 
-        if meta_description:
-            workflow_content["metadata"]["description"] = meta_description
-        if spec_module:
-            workflow_content["spec"]["default_module"] = spec_module
+    with workflow_path.open("w", encoding="utf-8") as f:
+        yaml.dump(workflow_content, f, sort_keys=False)
 
-        import yaml
+    readme_path = bundle_path / "README.md"
+    readme_text = textwrap.dedent(f"""\
+        # Workflow: {meta_name}
 
-        with workflow_path.open("w", encoding="utf-8") as f:
-            yaml.dump(workflow_content, f, sort_keys=False)
+        Version: {meta_version}
 
-        # Optional README.md
-        readme_path = bundle_path / "README.md"
-        readme_text = textwrap.dedent(f"""\
-            # Workflow: {meta_name}
+        {meta_description or "This workflow bundle contains a flowfunc pipeline."}
 
-            Version: {meta_version}
+        ## How to Run
 
-            {meta_description or "This workflow bundle contains a flowfunc pipeline."}
+        ```bash
+        uvx flowfunc run {workflows_base.name}/{name} --inputs '{{"example_global_input": "custom_value"}}'
+        ```
+    """)
+    readme_path.write_text(readme_text.strip(), encoding="utf-8")
 
-            ## How to Run
+    console.print(
+        Panel.fit(
+            "\n[green]Workflow bundle initialized successfully![/green]",
+            box=box.ROUNDED,
+        )
+    )
+    console.print(f"[cyan]Created:[/cyan] {workflow_path.relative_to(root)}")
+    console.print(f"[cyan]Created:[/cyan] {readme_path.relative_to(root)}")
 
-            ```bash
-            uvx flowfunc run {workflows_base.name}/{name} --inputs '{{"example_global_input": "custom_value"}}'
-            ```
-        """)
-        readme_path.write_text(readme_text.strip(), encoding="utf-8")
 
-        self.line(f"<info>Created: {workflow_path.relative_to(root)}</info>")
-        self.line(f"<info>Created: {readme_path.relative_to(root)}</info>")
-        self.line("<success>Workflow bundle initialized successfully.</success>")
-        return 0
+if __name__ == "__main__":
+    new()

@@ -1,21 +1,32 @@
-from __future__ import annotations
+from pathlib import Path
 
-from typing import ClassVar
+import click
+from rich.console import Console
 
-from cleo.io.inputs.option import Option
+from flowfunc import workflow
+from flowfunc.workflow.context import RunContext
 
-from flowfunc.console.commands.command import WorkflowCommand
+console = Console()
 
 
-class GraphCommand(WorkflowCommand):
-    name: str = "graph"
-    description: str = "Graphs a workflow."
+@click.command(name="graph", help="Graphs a workflow using matplotlib.")
+@click.argument("workflow_path", type=click.Path(exists=True, dir_okay=False))
+def graph(workflow_path: str) -> None:
+    ctx = RunContext()
 
-    arguments: ClassVar[list[Option]] = [
-        *WorkflowCommand._group_arguments(),
-    ]
+    try:
+        console.status("[bold green]Loading workflow...", spinner="dots")
+        workflow.load(Path(workflow_path), ctx.workflow)
 
-    def handle(self) -> int:
-        self.load_workflow()
-        self.context.workflow.pipeline.visualize_matplotlib()
-        return 0
+        console.log(
+            f"[green]✅ Loaded workflow:[/green] {ctx.workflow.model.metadata.name}"
+        )
+        console.log("[cyan]🧠 Visualizing pipeline with matplotlib...[/cyan]")
+
+        ctx.workflow.pipeline.visualize_matplotlib()
+
+        console.log("[bold green]✅ Graph visualization complete.[/bold green]")
+
+    except Exception as e:
+        console.log(f"[bold red]❌ Error while graphing: {e}[/bold red]")
+        raise click.Abort()

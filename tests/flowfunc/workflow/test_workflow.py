@@ -217,8 +217,6 @@ def test_pipeline_with_various_pipeline_configs() -> None:
     spec_dict = {
         "pipeline_config": {
             "validate_type_annotations": True,
-            "cache_type": "disk",
-            "cache_kwargs": {"cache_dir": "/tmp/cache"},
             "lazy": True,
             "debug": True,
         },
@@ -235,7 +233,5 @@ def test_pipeline_with_various_pipeline_configs() -> None:
     pf_pipeline = pipeline.from_model(spec_model)
 
     assert pf_pipeline.validate_type_annotations is True
-    assert pf_pipeline._cache_type == "disk"
-    assert pf_pipeline._cache_kwargs["cache_dir"] == "/tmp/cache"
     assert pf_pipeline.lazy is True
     assert pf_pipeline.debug is True

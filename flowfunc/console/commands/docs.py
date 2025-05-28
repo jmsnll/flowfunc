@@ -1,21 +1,26 @@
-from __future__ import annotations
+from pathlib import Path
 
-from typing import ClassVar
+import click
+from rich.console import Console
 
-from cleo.io.inputs.option import Option
+from flowfunc import workflow
+from flowfunc.workflow.context import RunContext
 
-from flowfunc.console.commands.command import WorkflowCommand
+console = Console()
 
 
-class DocsCommand(WorkflowCommand):
-    name = "docs"
-    description = "Displays the documentation for a workflow."
-
-    arguments: ClassVar[list[Option]] = [
-        *WorkflowCommand._group_arguments(),
-    ]
-
-    def handle(self) -> int:
-        self.load_workflow()
-        self.context.workflow.pipeline.print_documentation()
-        return 0
+@click.command("docs", help="Displays the documentation for a workflow.")
+@click.argument(
+    "workflow_path", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+@click.option(
+    "-v", "--verbose", is_flag=True, help="Print extra info about the workflow file."
+)
+def docs(workflow_path: Path, verbose: bool):
+    ctx = RunContext()
+    try:
+        workflow.load(workflow_path, ctx.workflow)
+        ctx.workflow.pipeline.print_documentation()
+    except Exception as e:
+        console.print(f"[red]Failed to generate documentation:[/] {e}")
+        raise click.Abort()

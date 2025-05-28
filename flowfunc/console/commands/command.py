@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import ClassVar
 
+import tomlkit.container
 from cleo.commands.command import Command as BaseCommand
 from cleo.exceptions import CleoValueError
 from cleo.helpers import argument
@@ -33,7 +34,7 @@ class Command(BaseCommand):
         return PyProjectTOML(locations.project_root() / "pyproject.toml")
 
     @property
-    def toml_config(self) -> PyProjectTOML:
+    def toml_config(self) -> tomlkit.container.Container:
         return self.pyproject.data.get("tool").get("flowfunc", {})
 
     def set_flowfunc(self, flowfunc: FlowFunc) -> None:
