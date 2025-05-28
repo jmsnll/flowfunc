@@ -34,11 +34,11 @@ def from_model(workflow: Workflow, step_index: int) -> pipefunc.PipeFunc:
         ) from e
 
 
-def resolve_scope(options, step):
+def resolve_scope(options, step) -> None:
     options["scope"] = step.options.scope
 
 
-def resolve_resources(options, global_resources, step_resources):
+def resolve_resources(options, global_resources, step_resources) -> None:
     # merges the two resource groups, with the step resources take precedence over global ones for this particular step
     merged_resources = {**global_resources.model_dump(), **step_resources.model_dump()}
     # users can specify more options if they wish in the `advanced_options` field
@@ -50,7 +50,7 @@ def resolve_resources(options, global_resources, step_resources):
     options["resources"] = flattened_resources
 
 
-def resolve_input_defaults(options, step):
+def resolve_input_defaults(options, step) -> None:
     if step.parameters:
         if "defaults" not in options:
             options.defaults = {}
@@ -75,7 +75,7 @@ def resolve_input_renames(options, step):
     return renames
 
 
-def resolve_function(options, step, default_module):
+def resolve_function(options, step, default_module) -> None:
     function_path = step.func
     if not function_path:
         if default_module and step.name:

@@ -12,7 +12,7 @@ console = Console()
 
 
 @click.group()
-def cli():
+def cli() -> None:
     """FlowFunc CLI - Manage and explore your workflows."""
     pass
 

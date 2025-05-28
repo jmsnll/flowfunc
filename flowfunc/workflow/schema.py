@@ -1,13 +1,16 @@
 from __future__ import annotations  # Important for forward references in type hints
 
-from collections.abc import Callable
 from enum import Enum
-from pathlib import Path
+from typing import TYPE_CHECKING
 from typing import Any
 
 from pydantic import BaseModel
 from pydantic import Field
 from pydantic import field_validator
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
 
 
 class KindEnum(str, Enum):

@@ -4,7 +4,7 @@ from flowfunc.workflow import function
 from flowfunc.workflow.schema import Workflow
 
 
-def resolve_scope(spec):
+def resolve_scope(spec) -> None:
     scope = spec.config.scope
     if scope:
         scoped_global_inputs = {

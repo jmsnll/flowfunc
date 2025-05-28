@@ -16,7 +16,7 @@ console = Console()
 @click.option(
     "-v", "--verbose", is_flag=True, help="Print extra info about the workflow file."
 )
-def docs(workflow_path: Path, verbose: bool):
+def docs(workflow_path: Path, verbose: bool) -> None:
     ctx = RunContext()
     try:
         workflow.load(workflow_path, ctx.workflow)

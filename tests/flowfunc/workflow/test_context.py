@@ -8,14 +8,14 @@ import pytest
 @pytest.fixture(scope="module", autouse=True)
 def freeze_all_time():
     frozen_time = freezegun.freeze_time(datetime(2025, 1, 1, 1, 0, 0))
-    frozen = frozen_time.start()
+    frozen_time.start()
     yield
     frozen_time.stop()
 
 
 def test_summarize_with_populated_run_context_check_expected_summary_fields(
     run_context,
-):
+) -> None:
     summary = run_context.summarize()
 
     assert summary.run_id == "test-run"
@@ -33,7 +33,7 @@ def test_summarize_with_populated_run_context_check_expected_summary_fields(
 )
 def test_save_summary_with_valid_summary_data_check_json_written_to_expected_path(
     run_context,
-):
+) -> None:
     summary_file = run_context.paths.run_dir / "summary.json"
 
     run_context.save_summary()
@@ -66,7 +66,9 @@ def test_save_summary_with_valid_summary_data_check_json_written_to_expected_pat
 
 @pytest.mark.parametrize("inputs_context", [{"user_inputs": {"x": 1}}], indirect=True)
 @pytest.mark.parametrize("metadata_context", [{"run_id": "override-id"}], indirect=True)
-def test_summarize_with_overrides(run_context, inputs_context, metadata_context):
+def test_summarize_with_overrides(
+    run_context, inputs_context, metadata_context
+) -> None:
     summary = run_context.summarize()
     assert summary.run_id == "override-id"
     assert summary.user_inputs == {"x": 1}

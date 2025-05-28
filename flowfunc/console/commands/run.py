@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 from rich.logging import RichHandler
@@ -12,6 +12,9 @@ from flowfunc.workflow import runner
 from flowfunc.workflow.context import RunContext
 from flowfunc.workflow.context import Status
 from flowfunc.workflow.utils import generate_unique_id
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 install(show_locals=True, width=200)
 logging.basicConfig(

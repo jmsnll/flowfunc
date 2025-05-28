@@ -17,7 +17,7 @@ console = Console()
     "--overwrite", "-o", is_flag=True, help="Overwrite workflow.yaml if it exists."
 )
 @click.option("--force-dir", is_flag=True, help="Allow existing bundle directory.")
-def new(workflow_bundle_name: str, overwrite: bool, force_dir: bool):
+def new(workflow_bundle_name: str, overwrite: bool, force_dir: bool) -> None:
     """Creates a new workflow bundle (directory + workflow.yaml file)."""
     name = workflow_bundle_name
     root = Path.cwd()
@@ -88,7 +88,7 @@ def new(workflow_bundle_name: str, overwrite: bool, force_dir: bool):
     meta_description = Prompt.ask("Workflow description (optional)", default="")
 
     default_src = get_project_config_value("source_directory", "src")
-    default_module = rf"{default_src.replace('/', '.')}\.{name}_functions"
+    rf"{default_src.replace('/', '.')}\.{name}_functions"
     spec_module = Prompt.ask(
         "Default Python module (optional)", default="", show_default=False
     )

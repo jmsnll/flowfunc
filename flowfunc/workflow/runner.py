@@ -22,17 +22,17 @@ logger = logging.getLogger(__name__)
 
 
 @status("[bold cyan]Loading workflow...")
-def load_workflow(ctx: RunContext, workflow_path: Path):
+def load_workflow(ctx: RunContext, workflow_path: Path) -> None:
     workflow.load(ctx.workflow, locations.project_root() / workflow_path)
 
 
 @status("📥 Loading input file...")
-def load_inputs(ctx: RunContext, input_file: Path):
+def load_inputs(ctx: RunContext, input_file: Path) -> None:
     ctx.inputs.user_inputs = inputs.from_file(input_file)
 
 
 @status("🧩 Resolving inputs...")
-def resolve_inputs(ctx: RunContext):
+def resolve_inputs(ctx: RunContext) -> None:
     pipeline_info = ctx.workflow.pipeline.info()
     ctx.inputs.resolved_inputs = inputs.resolve(
         ctx.inputs.user_inputs,
@@ -43,12 +43,12 @@ def resolve_inputs(ctx: RunContext):
 
 
 @status("⚙️ Executing pipeline...")
-def execute_pipeline_core(ctx: RunContext):
+def execute_pipeline_core(ctx: RunContext) -> None:
     ctx.outputs.results = ctx.workflow.pipeline.map(ctx.inputs.resolved_inputs)
 
 
 @status("💾 Persisting outputs...")
-def persist_outputs(ctx: RunContext):
+def persist_outputs(ctx: RunContext) -> None:
     ctx.outputs.persisted_outputs = outputs.persist_workflow_outputs(
         ctx.outputs.results,
         ctx.workflow.model.spec.outputs,
@@ -57,7 +57,7 @@ def persist_outputs(ctx: RunContext):
 
 
 @status("📝 Saving run summary...")
-def save_summary(ctx: RunContext):
+def save_summary(ctx: RunContext) -> None:
     ctx.save_summary()
 
 
@@ -66,9 +66,7 @@ def execute_pipeline(
     workflow_path: Path,
     input_file: Path,
 ) -> RunContext:
-    """
-    Runs the full pipeline: load workflow, inputs, resolve, execute, persist outputs.
-    """
+    """Runs the full pipeline: load workflow, inputs, resolve, execute, persist outputs."""
     load_workflow(ctx, workflow_path)
 
     ctx.metadata.run_id = ctx.metadata.run_id or generate_unique_id()

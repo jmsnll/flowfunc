@@ -113,14 +113,14 @@ class PyProjectTOML(BasePyProjectTOML):
         self._toml_document = None
 
 
-def load_pyproject(path: Path = None) -> TOMLFile:
+def load_pyproject(path: Path | None = None) -> TOMLFile:
     path = path or locations.project_root() / "pyproject.toml"
     if not path.exists() or not path.is_file():
         raise FileNotFoundError("Failed to load pyproject.toml")
     return TOMLFile(path)
 
 
-def load_flowfunc_toml(path: Path = None) -> TOMLDocument:
+def load_flowfunc_toml(path: Path | None = None) -> TOMLDocument:
     pyproject_file = load_pyproject(path)
     pyproject_document = pyproject_file.read()
     return pyproject_document.get("tools", {}).get("flowfunc", {})
