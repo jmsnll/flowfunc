@@ -1,9 +1,11 @@
+import logging
 from pathlib import Path
 from typing import Any
 
 from flowfunc import locations
 from flowfunc.io import serializer
-from flowfunc.workflow.runs import logger
+
+logger = logging.getLogger(__name__)
 
 
 def persist_workflow_outputs(

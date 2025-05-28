@@ -1,9 +1,11 @@
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
-from flowfunc.workflow.runs import logger
 from flowfunc.workflow.schema import GlobalInputItem
+
+logger = logging.getLogger(__name__)
 
 
 def from_file(file_path: Path) -> dict[str, Any]:

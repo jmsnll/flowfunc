@@ -3,10 +3,8 @@ from __future__ import annotations
 import logging
 import os
 import re
-from collections.abc import Mapping
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +17,7 @@ def directory(path: Path):
         yield path
     finally:
         os.chdir(cwd)
+
 
 def sanitize_string(data: str) -> str:
     sanitized = "".join(c if c.isalnum() or c in ["-", "_"] else "_" for c in data)

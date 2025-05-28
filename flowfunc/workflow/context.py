@@ -11,8 +11,8 @@ from pydantic import Field
 from pydantic.dataclasses import dataclass
 
 from flowfunc.locations import ensure
-from flowfunc.workflow.runs import generate_unique_id
 from flowfunc.workflow.schema import Workflow
+from flowfunc.workflow.utils import generate_unique_id
 
 
 class Status(enum.Enum):
@@ -46,7 +46,7 @@ class Summary(BaseModel):
 
 
 @dataclass
-class Metadata:
+class MetadataContext:
     run_id: str = dataclasses.field(default_factory=generate_unique_id)
     start_time: datetime | None = None
     end_time: datetime | None = None
@@ -101,7 +101,7 @@ class OutputsContext:
 
 @dataclass
 class RunContext:
-    metadata: Metadata = dataclasses.field(default_factory=Metadata)
+    metadata: MetadataContext = dataclasses.field(default_factory=MetadataContext)
     workflow: WorkflowContext = dataclasses.field(default_factory=WorkflowContext)
     inputs: InputsContext = dataclasses.field(default_factory=InputsContext)
     outputs: OutputsContext = dataclasses.field(default_factory=OutputsContext)
