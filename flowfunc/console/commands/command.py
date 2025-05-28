@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from functools import cached_property
-from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import ClassVar
@@ -10,17 +9,13 @@ from cleo.commands.command import Command as BaseCommand
 from cleo.exceptions import CleoValueError
 from cleo.helpers import argument
 
+from flowfunc import locations
 from flowfunc.pyproject.toml import PyProjectTOML
-from flowfunc.workflow import loader
-from flowfunc.workflow import pipeline
+from flowfunc.workflow import context
 
 if TYPE_CHECKING:
-    import pipefunc
-    from cleo.io.inputs.argument import Argument
-
     from flowfunc.app import FlowFunc
     from flowfunc.console.application import FlowFuncConsole
-    from flowfunc.workflow.schema import FlowFuncPipelineModel
 
 
 class Command(BaseCommand):
@@ -32,8 +27,11 @@ class Command(BaseCommand):
 
     @cached_property
     def pyproject(self) -> PyProjectTOML:
-        pyproject_path = Path.cwd() / "pyproject.toml"
-        self._pyproject_toml = PyProjectTOML(pyproject_path)
+        return PyProjectTOML(locations.project_root() / "pyproject.toml")
+
+    @property
+    def toml_config(self) -> PyProjectTOML:
+        return self.pyproject.data.get("tool").get("flowfunc", {})
 
     def set_flowfunc(self, flowfunc: FlowFunc) -> None:
         self._flowfunc = flowfunc
@@ -74,43 +72,14 @@ class Command(BaseCommand):
 
 
 class WorkflowCommand(Command):
-    arguments: ClassVar[list[Argument]] = [
-        argument(
-            "workflow",
-            "The workflow file.",
-        )
-    ]
-
-    _workflow_path: Path | None = None
-    _workflow_model: FlowFuncPipelineModel | None = None
-
-    @cached_property
-    def workflow(self) -> pipefunc.Pipeline | None:
-        """The pipefunc.Pipeline instance generated from the workflow model."""
-        workflow_arg = self.argument("workflow")
-        workload_path = Path(workflow_arg)
-        if not workload_path.exists():
-            self.io.write_error_line(
-                f"<error>Workflow file not found: {workload_path}</error>"
-            )
-            self._workflow_model = None  # Ensure model is also None
-            return None
-        try:
-            loaded_model = loader.load_from_path(workload_path)
-            self._workflow_model = loaded_model  # Store the model
-            self._workflow_path = workload_path
-            return pipeline.from_model(loaded_model.spec)
-        except Exception as e:
-            raise RuntimeError(f"Failed to load workflow model: {e}") from e
+    _ctx: context.RunContext | None = context.RunContext()
 
     @property
-    def workflow_model(self) -> FlowFuncPipelineModel | None:
-        """The loaded and validated FlowFuncPipelineModel."""
-        if self.workflow is None and self._workflow_model is None:
-            pass
-        return self._workflow_model
+    def context(self) -> context.RunContext:
+        return self._ctx
 
-    @property
-    def workflow_path(self) -> Path | None:
-        """The path to the workflow file."""
-        return self._workflow_path
+    @staticmethod
+    def _group_arguments():
+        return [
+            argument("workflow"),
+        ]
