@@ -64,5 +64,5 @@ spec:
       options:
         output_name: "summary"
 
-  pipeline_outputs:
-    - "aggregate_results.summary"
+  outputs:
+    - "summary"

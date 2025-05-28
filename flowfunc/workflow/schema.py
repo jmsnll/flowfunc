@@ -1,9 +1,9 @@
 from __future__ import annotations  # Important for forward references in type hints
 
+from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
 from typing import Any
-from collections.abc import Callable
 
 from pydantic import BaseModel
 from pydantic import Field
@@ -48,6 +48,29 @@ class OutputItem(BaseModel):
         extra = "forbid"
 
 
+class Resources(BaseModel):
+    cpus: int | None = None
+    memory: str | None = None  # e.g., "8GB"
+    advanced_options: dict[str, Any] | None = None
+
+    @field_validator("advanced_options")
+    @classmethod
+    def prevent_reserved_keys_in_advanced_options(
+        cls, v: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        if v is None:
+            return None
+
+        reserved_keys = {"cpus", "memory"}
+        for key in v:
+            if key in reserved_keys:
+                raise ValueError(
+                    f"Key '{key}' is a reserved field and cannot be used in 'advanced_options'."
+                    f"Please set '{key}' at the top level of resources."
+                )
+        return v
+
+
 class PipelineConfig(BaseModel):
     validate_type_annotations: bool | None = None
     default_variant: str | dict[str, str] | None = None
@@ -56,7 +79,7 @@ class PipelineConfig(BaseModel):
     debug: bool | None = None
     profile: bool | None = None
     scope: str | None = None
-    resources: Resources | None = None
+    default_resources: Resources | None = Field(default_factory=Resources)
 
     class Config:
         extra = "forbid"
@@ -66,15 +89,6 @@ class GlobalInputItem(BaseModel):
     description: str
     type: GlobalInputTypeEnum | None = None
     default: Any | None = None  # Value can be any valid JSON/YAML type
-
-
-class Resources(BaseModel):
-    cpus: int | None = None
-    memory: str | None = None  # e.g., "8GB"
-    advanced_options: dict[str, Any] | None = None
-
-    class Config:
-        extra = "allow"
 
 
 class StepOptions(BaseModel):
@@ -111,8 +125,8 @@ class Pipeline(BaseModel):
     default_module: str | None = None
     config: PipelineConfig | None = Field(default_factory=PipelineConfig)
     global_inputs: dict[str, GlobalInputItem] | None = Field(default_factory=dict)
-    steps: list[Step] = Field(..., min_length=1)  # Pydantic v2 uses min_length
-    pipeline_outputs: list[str | OutputItem] = Field(default_factory=list)
+    steps: list[Step] = Field(..., min_length=1)
+    outputs: dict[str, str] = Field(default_factory=dict)
 
     class Config:
         extra = "forbid"

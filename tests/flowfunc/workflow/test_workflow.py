@@ -52,7 +52,7 @@ def valid_workflow_dict() -> dict:
                     },
                 },
             ],
-            "pipeline_outputs": ["make_bold.bold_string"],
+            "outputs": ["make_bold.bold_string"],
         },
     }
 
@@ -201,7 +201,7 @@ def test_pipeline_with_new_import_path(tmp_path, monkeypatch) -> None:
                     },
                 }
             ],
-            "pipeline_outputs": ["doubled_num"],
+            "outputs": ["doubled_num"],
         },
     }
     pipeline_model = Workflow.model_validate(pipeline_dict)

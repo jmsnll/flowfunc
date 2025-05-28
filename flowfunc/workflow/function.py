@@ -15,32 +15,51 @@ def from_model(workflow: Workflow, step_index: int) -> pipefunc.PipeFunc:
     final_options = step.options.model_dump(exclude_none=True) if step.options else {}
 
     resolve_function(
-        step,
         final_options,
+        step,
         workflow.spec.default_module,
     )
-    resolve_input_renames(step, final_options)
+    resolve_input_renames(final_options, step)
     resolve_input_defaults(final_options, step)
-
+    resolve_resources(
+        final_options, workflow.spec.config.default_resources, step.resources
+    )
+    resolve_scope(final_options, step)
     try:
         return pipefunc.PipeFunc(**final_options)
     except Exception as e:
         raise PipelineBuildError(
             f"Failed to instantiate PipeFunc for step '{step.name}' "
-            f"(function: '{final_options.func}') with effective options: {final_options}. Error: {e}"
+            f"(function: '{final_options['func']}') with effective options: {final_options}. Error: {e}"
         ) from e
 
 
-def resolve_input_defaults(final_options, step):
+def resolve_scope(options, step):
+    options["scope"] = step.options.scope
+
+
+def resolve_resources(options, global_resources, step_resources):
+    # merges the two resource groups, with the step resources take precedence over global ones for this particular step
+    merged_resources = {**global_resources.model_dump(), **step_resources.model_dump()}
+    # users can specify more options if they wish in the `advanced_options` field
+    flattened_resources = {
+        "cpus": merged_resources.get("cpus"),
+        "memory": merged_resources.get("memory"),
+        **(merged_resources.get("advanced_options") or {}),
+    }
+    options["resources"] = flattened_resources
+
+
+def resolve_input_defaults(options, step):
     if step.parameters:
-        if "defaults" not in final_options:
-            final_options.defaults = {}
+        if "defaults" not in options:
+            options.defaults = {}
         for param_key, param_value in step.parameters.items():
-            if param_key not in final_options.defaults:
-                final_options.defaults[param_key] = param_value
+            if param_key not in options.defaults:
+                options.defaults[param_key] = param_value
 
 
-def resolve_input_renames(step, options):
+def resolve_input_renames(options, step):
     renames = {}
     if step.inputs:
         for func_arg_name, pipeline_source_name in step.inputs.items():
@@ -56,7 +75,7 @@ def resolve_input_renames(step, options):
     return renames
 
 
-def resolve_function(step, options, default_module):
+def resolve_function(options, step, default_module):
     function_path = step.func
     if not function_path:
         if default_module and step.name:

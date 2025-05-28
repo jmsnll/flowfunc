@@ -7,6 +7,9 @@ metadata:
 spec:
   default_module: examples.nlp_text_summarization.main
 
+  config:
+    scope: "nlp"
+
   global_inputs:
     text: # This name matches the key used in `pipeline_sentiment.map({"text": texts})`
       description: "A list of input texts to process. Each text will be processed individually."
@@ -60,6 +63,5 @@ spec:
         output_name: "result_summary"
         # No mapspec here as this function aggregates the list of sentiments.
 
-  pipeline_outputs:
-    - name: "result_summary"
-      path: "final_sentiment_report.json"
+  outputs:
+    result_summary: "final_sentiment_report.json"

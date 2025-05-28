@@ -118,7 +118,7 @@ def new(workflow_bundle_name: str, overwrite: bool, force_dir: bool):
                 }
             },
             "steps": [step],
-            "pipeline_outputs": ["example_step.example_output"],
+            "outputs": ["example_step.example_output"],
         },
     }
     if meta_description:

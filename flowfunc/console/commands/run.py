@@ -104,19 +104,26 @@ def run(
 
         with console.status("⚙️ Executing pipeline...", spinner="earth"):
             ctx.outputs.results = ctx.workflow.pipeline.map(ctx.inputs.resolved_inputs)
+
+            # raise Exception(ctx.workflow.pipeline.info())
+
             ctx.metadata.status = Status.SUCCESS.value
 
         with console.status("💾 Persisting outputs...", spinner="dots2"):
             ctx.outputs.persisted_outputs = outputs.persist_workflow_outputs(
                 ctx.outputs.results,
-                ctx.workflow.model.spec.pipeline_outputs,
+                ctx.workflow.model.spec.outputs,
                 ctx.paths.output_dir,
             )
 
-        # Summary table
-        table = Table(
-            title="✅ Workflow Completed", show_header=True, header_style="bold magenta"
+        console.print(
+            Rule(
+                title=f"🛠️ Completed: [green]{ctx.workflow.model.metadata.name}[/]",
+                style="bold green",
+            )
         )
+        # Summary table
+        table = Table(title="Outputs", show_header=True, header_style="bold magenta")
         table.add_column("Output Key")
         table.add_column("Path", overflow="fold")
         for k, v in ctx.outputs.persisted_outputs.items():
