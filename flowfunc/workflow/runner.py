@@ -39,6 +39,7 @@ def resolve_inputs(ctx: RunContext) -> None:
         ctx.workflow.model.spec.global_inputs,
         pipeline_info.get("inputs", ()),
         pipeline_info.get("required_inputs", []),
+        ctx.workflow.model.spec.config.scope,
     )
 
 
