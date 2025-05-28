@@ -103,6 +103,7 @@ runs_directory = "dev/runs"
 [dependency-groups]
 dev = [
   "coverage>=7.8.2",
+  "freezegun>=1.5.2",
   "mypy>=1.15.0",
   "pre-commit>=4.2.0",
   "pytest>=8.3.5",
