@@ -5,11 +5,9 @@ from typing import Any
 
 from pipefunc import Pipeline
 
+from flowfunc.exceptions import PipelineExecutionError
+
 logger = logging.getLogger(__name__)
-
-
-class PipelineExecutionError(Exception):
-    """Custom exception for pipeline execution errors."""
 
 
 class PipelineExecutor:

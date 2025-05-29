@@ -6,13 +6,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Pipefunc types
 from pipefunc import Pipeline
 
-# Console Reporter (optional, for feedback)
-from flowfunc.console.reporter import ConsoleReporter  # Make this optional
+from flowfunc.console.reporter import ConsoleReporter
 from flowfunc.pipeline.builder import PipelineBuilder
-from flowfunc.pipeline.builder import PipelineBuilderError
+from flowfunc.pipeline.builder import PipelineBuildError
 from flowfunc.pipeline.executor import PipelineExecutionError
 from flowfunc.pipeline.executor import PipelineExecutor
 from flowfunc.run.environment import RunEnvironmentManager
@@ -28,8 +26,6 @@ from flowfunc.run.summary_model import Status
 from flowfunc.run.summary_model import Summary
 from flowfunc.run.summary_persister import SummaryPersistenceError
 from flowfunc.run.summary_persister import SummaryPersister
-
-# Service Classes
 from flowfunc.workflow_definition.loader import WorkflowDefinitionLoader
 from flowfunc.workflow_definition.loader import WorkflowDefinitionLoaderError
 
@@ -95,16 +91,14 @@ class WorkflowRunCoordinator:
         summary: Summary | None = None  # To hold the final summary
 
         try:
-            # 1. Load Workflow Definition
             with self._report_status("Loading workflow definition..."):
                 workflow_model = self.definition_loader.from_path(workflow_file_path)
 
-            # 2. Setup Run Environment (after getting workflow_name for pathing)
             with self._report_status("Setting up run environment..."):
                 run_dir, _ = self.env_manager.setup_run_directories(
                     workflow_model.metadata.name, run_id
                 )
-            # Initialize summary now that we have workflow_name and run_dir
+
             state_tracker.start_run(
                 workflow_name=workflow_model.metadata.name,
                 run_dir=run_dir,
@@ -112,12 +106,10 @@ class WorkflowRunCoordinator:
             )
             summary = state_tracker.get_summary()
 
-            # 3. Build Pipeline
             pipeline: Pipeline
             with self._report_status("Building pipeline..."):
                 pipeline = self.pipeline_builder.build(workflow_model)
 
-            # 4. Load User Inputs
             raw_user_inputs: dict[str, Any] = {}
             if input_file_path:
                 with self._report_status(
@@ -135,7 +127,6 @@ class WorkflowRunCoordinator:
                 )
             state_tracker.update_user_inputs(raw_user_inputs)
 
-            # 5. Resolve Inputs
             resolved_inputs: dict[str, Any]
             with self._report_status("Resolving inputs..."):
                 pipeline_info = pipeline.info()
@@ -147,19 +138,17 @@ class WorkflowRunCoordinator:
                 )
             state_tracker.update_resolved_inputs(resolved_inputs)
 
-            # 6. Execute Pipeline
             pipeline_results: dict[str, Any]
             with self._report_status("Executing pipeline..."):
                 pipeline_results = self.pipeline_executor.execute(
                     pipeline, resolved_inputs, workflow_model.metadata.name
                 )
 
-            # 7. Persist Outputs
             persisted_outputs_manifest: dict[str, str] = {}
             with self._report_status("Persisting outputs..."):
                 persisted_outputs_manifest = self.output_persister.persist(
                     results=pipeline_results,
-                    output_specs=workflow_model.spec.outputs,
+                    workflow_model=workflow_model,
                     output_dir=summary.output_dir,  # Use output_dir from summary
                 )
             state_tracker.update_persisted_outputs(persisted_outputs_manifest)
@@ -169,7 +158,7 @@ class WorkflowRunCoordinator:
 
         except (
             WorkflowDefinitionLoaderError,
-            PipelineBuilderError,
+            PipelineBuildError,
             RunEnvironmentManagerError,
             InputProviderError,
             InputResolverError,

@@ -5,14 +5,14 @@ This module provides the `WorkflowDefinitionLoader` to read workflow files and
 the Pydantic schema models (`Workflow`, `Step`, etc.) that define the structure.
 """
 
-from .loader import WorkflowDefinitionLoader
-from .schema import InputItem
-from .schema import Resources
-from .schema import StepDefinition
-from .schema import StepOptions
-from .schema import WorkflowDefinition
-from .schema import WorkflowSpec
-from .schema import WorkflowSpecOptions
+from flowfunc.workflow_definition.loader import WorkflowDefinitionLoader
+from flowfunc.workflow_definition.schema import InputItem
+from flowfunc.workflow_definition.schema import Resources
+from flowfunc.workflow_definition.schema import StepDefinition
+from flowfunc.workflow_definition.schema import StepOptions
+from flowfunc.workflow_definition.schema import WorkflowDefinition
+from flowfunc.workflow_definition.schema import WorkflowSpec
+from flowfunc.workflow_definition.schema import WorkflowSpecOptions
 
 __all__ = [
     "InputItem",

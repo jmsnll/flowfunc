@@ -4,15 +4,17 @@ import logging
 from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
+from typing import Literal
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel
 from pydantic import Field
 from pydantic import field_validator
+from pydantic import model_validator
 from pydantic.main import IncEx
 
+from flowfunc.pipeline.builder import PipelineBuildError
 from flowfunc.utils.python import import_callable
-from flowfunc.workflow_definition.exceptions import PipelineBuildError
 
 logger = logging.getLogger(__name__)
 
@@ -70,9 +72,7 @@ class WorkflowSpecOptions(BaseModel):
     default_resources: Resources | None = None
     scope: str | None = None
 
-    model_config = {
-        "extra": "forbid"
-    }
+    model_config = {"extra": "forbid"}
 
 
 class InputItem(BaseModel):
@@ -90,7 +90,7 @@ class InputItem(BaseModel):
     def model_dump(
         self,
         *,
-        mode: Literal['json', 'python'] | str = 'python',
+        mode: Literal["json", "python"] | str = "python",
         include: IncEx | None = None,
         exclude: IncEx | None = None,
         context: Any | None = None,
@@ -99,7 +99,7 @@ class InputItem(BaseModel):
         exclude_defaults: bool = False,
         exclude_none: bool = False,
         round_trip: bool = False,
-        warnings: bool | Literal['none', 'warn', 'error'] = True,
+        warnings: bool | Literal["none", "warn", "error"] = True,
         fallback: Callable[[Any], Any] | None = None,
         serialize_as_any: bool = False,
     ) -> dict[str, Any]:
@@ -119,9 +119,7 @@ class StepOptions(BaseModel):
     scope: str | None = None
     advanced_options: dict[str, Any] | None = None
 
-    model_config = {
-        "extra": "forbid"
-    }
+    model_config = {"extra": "forbid"}
 
 
 class StepDefinition(BaseModel):
@@ -130,7 +128,7 @@ class StepDefinition(BaseModel):
     description: str | None = None
     inputs: dict[str, InputItem | str] | None = Field(default_factory=dict)
     parameters: dict[str, Any] | None = Field(default_factory=dict)
-    outputs: list[str] | None = None
+    output_name: str | None = None
     resources: Resources | None = None
     options: StepOptions | None = Field(default_factory=StepOptions)
 
@@ -174,11 +172,14 @@ class StepDefinition(BaseModel):
     def _get_pipefunc_renames(self) -> dict[str, str]:
         renames: dict[str, str] = {}
         if self.inputs:
-            for name, input_item_model in self.inputs.items():
-                if isinstance(
-                    input_item_model.value, str
-                ) and input_item_model.value.startswith("$global."):
-                    global_var_name = ".".join(input_item_model.value.split(".", 1)[1:])
+            for name, input_item in self.inputs.items():
+                input_value = (
+                    input_item.value
+                    if isinstance(input_item, InputItem)
+                    else input_item
+                )
+                if input_value.startswith("$global."):
+                    global_var_name = ".".join(input_value.split(".", 1)[1:])
                     if name != global_var_name:
                         renames[name] = global_var_name
         return renames
@@ -223,16 +224,11 @@ class StepDefinition(BaseModel):
             else {}
         )
 
-        # Core PipeFunc attributes from Step fields
-        pf_options["name"] = self.name
-        if self.description is not None:
-            pf_options["description"] = self.description
-
         # Outputs for PipeFunc
-        if self.outputs:  # User-defined list of output names
-            pf_options["outputs"] = self.outputs
+        if self.output_name:  # User-defined list of output names
+            pf_options["output_name"] = self.output_name
         elif self.name:  # Default to step name if no explicit outputs list
-            pf_options["outputs"] = [self.name]
+            pf_options["output_name"] = self.name
         else:  # Should be caught by Step validation if name is required
             raise PipelineBuildError(
                 "Step must have a name to determine default PipeFunc output."
@@ -283,9 +279,7 @@ class WorkflowSpec(BaseModel):
     outputs: dict[str, Path] | None = Field(default_factory=dict)
     steps: list[StepDefinition] = Field(min_length=1)
 
-    model_config = {
-        "extra": "forbid"
-    }
+    model_config = {"extra": "forbid"}
 
     def model_dump(self, **kwargs: dict[str, Any] | None) -> dict[str, Any]:
         base = super().model_dump(**kwargs)
@@ -301,9 +295,7 @@ class WorkflowDefinition(BaseModel):
     metadata: Metadata
     spec: WorkflowSpec
 
-    model_config = {
-        "extra": "forbid"
-    }
+    model_config = {"extra": "forbid"}
 
     def get_pipeline_constructor_kwargs(self) -> dict[str, Any]:
         """
@@ -337,9 +329,9 @@ class WorkflowDefinition(BaseModel):
             if self.spec.options.scope is not None:
                 kwargs["scope"] = self.spec.options.scope
 
-        # Override or set pipeline scope from spec.config.scope if defined
-        # This gives spec.config.scope higher precedence for the pipeline's scope if both are set.
-        if self.spec.config and self.spec.config.scope is not None:
-            kwargs["scope"] = self.spec.config.scope
+        # Override or set pipeline scope from spec.options.scope if defined
+        # This gives spec.options.scope higher precedence for the pipeline's scope if both are set.
+        if self.spec.options and self.spec.options.scope is not None:
+            kwargs["scope"] = self.spec.options.scope
 
         return kwargs

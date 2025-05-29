@@ -24,8 +24,8 @@ spec:
       description: "Tokenizes input text into words, removes stopwords and non-alphabetic characters."
       inputs:
         text: "$global.text" # Maps the 'text' argument of tokenize_text function to the global input 'text'
+      output_name: "tokens"
       options:
-        output_name: "tokens"
         mapspec: "text[n] -> tokens[n]" # Correctly refers to the function's argument name 'text'
 
     - name: "extract_keywords"
@@ -33,8 +33,8 @@ spec:
       inputs:
         tokens: "tokenize_input_text" # Uses output 'tokens' from 'tokenize_input_text' step
                                       # flowfunc resolves this to tokenize_input_text.tokens
+      output_name: "keywords"
       options:
-        output_name: "keywords"
         mapspec: "tokens[n] -> keywords[n]"
 
     - name: "generate_summary"
@@ -42,16 +42,16 @@ spec:
       inputs:
         text: "$global.text"     # Function's 'text' arg comes from global 'text' input
         keywords: "extract_text_keywords" # Function's 'keywords' arg comes from 'extract_text_keywords' step output
+      output_name: "summary"
       options:
-        output_name: "summary"
         mapspec: "text[n], keywords[n] -> summary[n]"
 
     - name: "analyze_sentiment"
       description: "Analyzes the sentiment of the generated summary."
       inputs:
         summary: "generate_text_summary" # Uses output 'summary' from 'generate_text_summary' step
+      output_name: "sentiment"
       options:
-        output_name: "sentiment"
         mapspec: "summary[n] -> sentiment[n]"
 
     - name: "aggregate_summarization"
@@ -59,8 +59,8 @@ spec:
       inputs:
         sentiment: "analyze_text_sentiment" # Uses output 'sentiment' (which will be a list due to prior mapspec)
                                             # from 'analyze_text_sentiment' step.
+      output_name: "result_summary"
       options:
-        output_name: "result_summary"
         # No mapspec here as this function aggregates the list of sentiments.
 
   outputs:

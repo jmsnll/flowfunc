@@ -4,8 +4,9 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from flowfunc.io.serializer import SerializerError
+from flowfunc.exceptions import SerializerError
 from flowfunc.io.serializer import lookup as lookup_serializer  # Ensure this exists
+from flowfunc.workflow_definition import WorkflowDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +24,14 @@ class OutputPersister:
     def persist(
         self,
         results: dict[str, Any],
-        output_specs: dict[str, Path] | None,  # From Workflow.spec.outputs
+        workflow_model: WorkflowDefinition,  # Pass the whole model to get scope and output specs
         output_dir: Path,
     ) -> dict[str, str]:
         """
         Saves declared workflow outputs to the output directory.
         Returns a manifest of {output_name: file_path_string}.
         """
-        if not output_specs:
+        if not workflow_model.spec.outputs:
             logger.info(
                 "No output specifications provided in workflow. Skipping output persistence."
             )
@@ -44,34 +45,32 @@ class OutputPersister:
 
         persisted_outputs_manifest: dict[str, str] = {}
         logger.info(f"Persisting workflow outputs to: {output_dir}")
+        workflow_scope = (
+            workflow_model.spec.options.scope if workflow_model.spec.options else None
+        )
 
-        for output_name, spec in output_specs.items():
-            if output_name not in results:
+        for output_name, output_path in workflow_model.spec.outputs.items():
+            scoped_name = (
+                f"{workflow_scope}.{output_name}" if workflow_scope else output_name
+            )
+            if scoped_name not in results:
                 logger.warning(
-                    f"Output '{output_name}' defined in spec but not found in pipeline results. Skipping."
+                    f"Output '{scoped_name}' defined in spec but not found in pipeline results. Skipping."
                 )
                 continue
 
-            data_to_persist = results[output_name]
-            file_name = (
-                spec.file
-                or f"{output_name}.{self._get_default_extension(spec.serializer)}"
-            )
-            file_path = output_dir / file_name
+            data_to_persist = results[scoped_name]
+            file_path = (output_dir / output_path).resolve()
 
             try:
-                logger.debug(
-                    f"Persisting output '{output_name}' to '{file_path}' using serializer '{spec.serializer}'."
-                )
-                self._serialize_output(
-                    data_to_persist, file_path, spec.serializer, spec.kwargs
-                )
-                persisted_outputs_manifest[output_name] = str(file_path.resolve())
-                logger.info(f"Successfully persisted '{output_name}' to '{file_path}'.")
+                logger.debug(f"Persisting output '{scoped_name}' to '{file_path}'.")
+                self._serialize_output(data_to_persist, file_path)
+                persisted_outputs_manifest[scoped_name] = str(file_path.resolve())
+                logger.info(f"Successfully persisted '{scoped_name}' to '{file_path}'.")
             except Exception as e:
                 # Log error but continue persisting other outputs if possible
                 logger.error(
-                    f"Failed to persist output '{output_name}' to '{file_path}': {e}",
+                    f"Failed to persist output '{scoped_name}' to '{file_path}': {e}",
                     exc_info=True,
                 )
                 # Optionally, re-raise if one failure should stop all:
@@ -108,47 +107,22 @@ class OutputPersister:
         self,
         data: Any,
         file_path: Path,
-        serializer_name: str | None,  # Name of the serializer (e.g., "json", "pickle")
-        serializer_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """
         Serializes and writes data to a file using the specified serializer.
         (Adapted from flowfunc.workflow.outputs._serialize_output)
         """
-        serializer_kwargs = serializer_kwargs or {}
-        effective_serializer_name = serializer_name
-
-        if not effective_serializer_name:
-            # Attempt to infer from file extension if serializer name is not provided
-            try:
-                lookup_serializer(
-                    file_path.suffix
-                )  # Check if one exists for the suffix
-                effective_serializer_name = (
-                    file_path.suffix
-                )  # Use suffix as name (e.g. ".json")
-            except SerializerError:
-                # If no serializer for suffix and none specified, fallback or error
-                logger.warning(
-                    f"No serializer specified for {file_path} and suffix '{file_path.suffix}' is not recognized. Attempting pickle."
-                )
-                effective_serializer_name = ".pkl"  # Default fallback
-
         try:
             # `lookup_serializer` should ideally take the name directly, or adapt suffix
             # e.g. if name is "json", it looks up ".json"
-            target_serializer_key = (
-                effective_serializer_name
-                if effective_serializer_name.startswith(".")
-                else f".{effective_serializer_name}"
-            )
+            target_serializer_key = file_path.suffix
             serializer = lookup_serializer(target_serializer_key)
-            serializer.dump(data, file_path, **serializer_kwargs)
+            serializer(data, file_path)
         except SerializerError as e:
             raise OutputPersisterError(
-                f"Serializer '{effective_serializer_name}' not found for {file_path}: {e}"
+                f"Serializer for '{file_path.suffix}' not found for {file_path}: {e}"
             ) from e
         except Exception as e:
             raise OutputPersisterError(
-                f"Error during serialization of {file_path} with '{effective_serializer_name}': {e}"
+                f"Error during serialization of {file_path} with '{file_path.suffix}': {e}"
             ) from e

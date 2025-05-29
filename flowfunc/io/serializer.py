@@ -1,12 +1,8 @@
-# flowfunc/ Předpokládejme, že toto je v novém souboru, např. `flowfunc/io/serialization.py`
-
 import json
 import pickle
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-
-from flowfunc.core.exceptions import FlowFuncCoreError
 
 
 def serialize_json(data: Any, path: Path) -> None:
@@ -33,7 +29,3 @@ def lookup(key: str | Path) -> Callable[[Any, Path], None] | None:
     }
     suffix = key.suffix if isinstance(key, Path) else key
     return serializers.get(suffix.lower())
-
-
-class SerializerError(FlowFuncCoreError):
-    pass

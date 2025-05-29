@@ -2,8 +2,8 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
+from flowfunc.pipeline.builder import PipelineBuildError
 from flowfunc.utils.python import import_callable
-from flowfunc.workflow_definition.exceptions import PipelineBuildError
 from flowfunc.workflow_definition.schema import StepDefinition
 from flowfunc.workflow_definition.schema import WorkflowDefinition
 
@@ -83,7 +83,11 @@ def resolve_input_renames(
             name,
             input_item_model,
         ) in step.inputs.items():  # input_item_model is an InputItem instance
-            input_value = input_item_model.value if isinstance(input_item_model, dict) else input_item_model
+            input_value = (
+                input_item_model.value
+                if isinstance(input_item_model, dict)
+                else input_item_model
+            )
             if input_value.startswith("$global."):
                 global_var_name = ".".join(input_value.split(".", 1)[1:])
                 if name != global_var_name:

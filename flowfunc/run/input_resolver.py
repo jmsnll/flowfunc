@@ -3,7 +3,6 @@
 import logging
 from typing import Any
 
-
 from flowfunc.workflow_definition.schema import WorkflowDefinition
 
 logger = logging.getLogger(__name__)
