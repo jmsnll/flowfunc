@@ -13,7 +13,3 @@ class WorkflowSchemaValidationError(FlowFuncCoreError):
 
 class PipelineBuildError(FlowFuncCoreError):
     pass
-
-
-class CallableImportError(FlowFuncCoreError):
-    pass

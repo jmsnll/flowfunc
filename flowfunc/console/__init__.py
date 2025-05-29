@@ -7,6 +7,8 @@ from rich.console import Console as RichConsole
 from rich.logging import RichHandler
 from rich.traceback import install
 
+from flowfunc.console.reporter import ConsoleReporter
+
 console = RichConsole()
 install(show_locals=True, width=200)
 logging.basicConfig(
@@ -32,3 +34,10 @@ def status(message: str, spinner: str = "dots") -> Callable[[F], F]:
         return wrapper  # type: ignore
 
     return decorator
+
+
+__all__ = [
+    "ConsoleReporter",
+    "console",
+    "status",
+]

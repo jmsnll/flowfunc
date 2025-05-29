@@ -63,8 +63,12 @@ def resolve_input_renames(options, step):
     renames = {}
     if step.inputs:
         for name, input_item in step.inputs.items():
-            if input_item.value.startswith("$global."):
-                global_var_name = ".".join(input_item.value.split(".", 1)[1:])
+            input_value = input_item
+            # TODO: remove when pydantic coercion working
+            if isinstance(input_item, dict):
+                input_value = input_item.value
+            if input_value.startswith("$global."):
+                global_var_name = ".".join(input_value.split(".", 1)[1:])
                 if name != global_var_name:
                     renames[name] = global_var_name
     if renames:

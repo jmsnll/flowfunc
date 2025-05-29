@@ -1,10 +1,19 @@
+# flowfunc/console/commands/docs.py
+
+import sys  # For sys.exit on error
 from pathlib import Path
 
 import click
+from rich.panel import Panel  # For displaying errors nicely
 
+# Import your rich console instance
 from flowfunc.console import console
-from flowfunc.workflow import loader
-from flowfunc.workflow import pipeline
+from flowfunc.pipeline.builder import PipelineBuilder
+from flowfunc.pipeline.builder import PipelineBuildError
+
+# Import the refactored classes
+from flowfunc.workflow_definition.loader import WorkflowDefinitionLoader
+from flowfunc.workflow_definition.loader import WorkflowDefinitionLoaderError
 
 
 @click.command("docs", help="Displays the documentation for a workflow.")
@@ -12,13 +21,67 @@ from flowfunc.workflow import pipeline
     "workflow_path", type=click.Path(exists=True, dir_okay=False, path_type=Path)
 )
 @click.option(
-    "-v", "--verbose", is_flag=True, help="Print extra info about the workflow file."
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (currently affects logging levels).",
 )
 def docs(workflow_path: Path, verbose: bool) -> None:
+    """
+    Displays the generated documentation for a given workflow definition file.
+    This involves parsing the workflow and constructing the pipeline to access
+    its documentation string.
+    """
+    # The verbose flag here might be used to set a global logging level
+    # or pass to a ConsoleReporter if more detailed output during loading/building is needed.
+    # For now, its direct effect in this command is minimal, assuming print_documentation()
+    # and loggers handle verbosity.
+
+    definition_loader = WorkflowDefinitionLoader()
+    pipeline_builder = PipelineBuilder()  # Uses default resolvers
+
     try:
-        workflow_model = loader.from_path(workflow_path.absolute())
-        workflow_pipeline = pipeline.from_model(workflow_model)
+        console.print(
+            f"Loading workflow definition from: [cyan]{workflow_path.absolute()}[/cyan]"
+        )
+        workflow_model = definition_loader.from_path(workflow_path.absolute())
+
+        if verbose:
+            # Optionally, print more details about the loaded model if verbose
+            # For example:
+            # console.print("\n[bold green]Workflow Model Snippet:[/bold green]")
+            # console.print(workflow_model.model_dump(mode='json', indent=2, exclude_none=True))
+            pass  # Add more verbose output if needed
+
+        console.print(
+            f"Building pipeline for: [cyan]{workflow_model.spec.metadata.name}[/cyan]"
+        )
+        workflow_pipeline = pipeline_builder.build(workflow_model)
+
+        console.print("\n[bold green]Workflow Documentation:[/bold green]")
+        # pipefunc.Pipeline.print_documentation() usually prints to stdout.
+        # If flowfunc.console.console has redirected stdout, this should be fine.
         workflow_pipeline.print_documentation()
+
+    except (WorkflowDefinitionLoaderError, PipelineBuildError) as e:
+        error_title = (
+            "Pipeline Build Error"
+            if isinstance(e, PipelineBuildError)
+            else "Workflow Loading Error"
+        )
+        console.print(
+            Panel(f"[bold red]{error_title}:[/]\n{e}", border_style="red", expand=False)
+        )
+        sys.exit(1)  # Use sys.exit for non-zero exit code
     except Exception as e:
-        console.print(f"[red]Failed to generate documentation:[/] {e}")
-        raise click.Abort()
+        # Catch any other unexpected errors
+        console.print(
+            Panel(
+                f"[bold red]An unexpected error occurred:[/] {e}",
+                border_style="red",
+                expand=False,
+            )
+        )
+        # For debugging, you might want to re-raise or log the full traceback
+        # logger.exception("Unexpected error in docs command")
+        sys.exit(1)
