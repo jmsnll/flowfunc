@@ -11,7 +11,8 @@ from rich.text import Text
 
 from flowfunc import locations
 from flowfunc.console import console
-from flowfunc.pyproject.toml import load_pyproject
+
+# from flowfunc.pyproject.toml import load_pyproject
 
 DEFAULTS = {
     "source_directory": "src",

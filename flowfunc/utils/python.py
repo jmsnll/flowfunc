@@ -1,7 +1,7 @@
 import importlib
 from collections.abc import Callable
 
-from flowfunc.workflow.exceptions import CallableImportError
+from flowfunc.exceptions import CallableImportError
 
 
 def import_callable(fqn: str) -> Callable:
