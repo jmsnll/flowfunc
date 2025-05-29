@@ -1,37 +1,35 @@
-# flowfunc/run/output_persister.py
-
 import logging
 from pathlib import Path
 from typing import Any
 
-from flowfunc.exceptions import SerializerError
-from flowfunc.io.serializer import lookup as lookup_serializer  # Ensure this exists
-from flowfunc.workflow_definition import WorkflowDefinition
+from flowfunc.exceptions import OutputPersisterError
+from flowfunc.exceptions import SerializerError as IOSerializerError
+from flowfunc.io.serializer import Serializer as IOSerializer
+from flowfunc.io.serializer import lookup_serializer
+from flowfunc.workflow_definition.schema import WorkflowDefinition
 
 logger = logging.getLogger(__name__)
 
 
-class OutputPersisterError(Exception):
-    """Custom exception for output persisting errors."""
-
-
 class OutputPersister:
     """
-    Persists pipeline results to disk according to workflow output definitions.
-    (Adapted from flowfunc.workflow.outputs.persist)
+    Persists pipeline results to disk according to workflow output definitions,
+    handling global workflow scope and using the new serializer lookup.
     """
 
     def persist(
         self,
         results: dict[str, Any],
-        workflow_model: WorkflowDefinition,  # Pass the whole model to get scope and output specs
+        workflow_model: WorkflowDefinition,
         output_dir: Path,
     ) -> dict[str, str]:
         """
         Saves declared workflow outputs to the output directory.
-        Returns a manifest of {output_name: file_path_string}.
+        Returns a manifest of {declared_output_name: absolute_file_path_string}.
         """
-        if not workflow_model.spec.outputs:
+        # Assuming workflow_model.spec.outputs is Optional[Dict[str, Path]]
+        declared_outputs: dict[str, Path] | None = workflow_model.spec.outputs
+        if not declared_outputs:
             logger.info(
                 "No output specifications provided in workflow. Skipping output persistence."
             )
@@ -39,69 +37,88 @@ class OutputPersister:
 
         if not output_dir.exists():
             logger.warning(
-                f"Output directory {output_dir} does not exist. Creating it."
+                f"Base output directory {output_dir} does not exist. Creating it."
             )
-            output_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                output_dir.mkdir(parents=True, exist_ok=True)
+            except OSError as e:
+                raise OutputPersisterError(
+                    f"Could not create base output directory {output_dir}: {e}"
+                ) from e
 
         persisted_outputs_manifest: dict[str, str] = {}
-        logger.info(f"Persisting workflow outputs to: {output_dir}")
-        workflow_scope = (
-            workflow_model.spec.options.scope if workflow_model.spec.options else None
-        )
+        logger.info(f"Persisting workflow outputs to base directory: {output_dir}")
 
-        for output_name, output_path in workflow_model.spec.outputs.items():
-            scoped_name = (
-                f"{workflow_scope}.{output_name}" if workflow_scope else output_name
+        # Determine global scope for looking up results
+        global_scope: str | None = None
+        if workflow_model.spec.options and workflow_model.spec.options.scope:
+            global_scope = workflow_model.spec.options.scope
+
+        if global_scope:
+            logger.debug(
+                f"Using global output scope for result lookup: '{global_scope}'"
             )
-            if scoped_name not in results:
+
+        for declared_output_name, defined_path_spec in declared_outputs.items():
+            # Construct the key to look for in results, considering the global scope
+            actual_result_key = (
+                f"{global_scope}.{declared_output_name}"
+                if global_scope
+                else declared_output_name
+            )
+
+            if actual_result_key not in results:
                 logger.warning(
-                    f"Output '{scoped_name}' defined in spec but not found in pipeline results. Skipping."
+                    f"Output '{declared_output_name}' (expected as '{actual_result_key}' in pipeline results) "
+                    "not found. Skipping."
                 )
                 continue
 
-            data_to_persist = results[scoped_name]
-            file_path = (output_dir / output_path).resolve()
+            data_to_persist = results[actual_result_key].output
+
+            # Determine the final absolute target path
+            target_file_path: Path
+            if defined_path_spec.is_absolute():
+                target_file_path = defined_path_spec
+            else:
+                target_file_path = (output_dir / defined_path_spec).resolve()
 
             try:
-                logger.debug(f"Persisting output '{scoped_name}' to '{file_path}'.")
-                self._serialize_output(data_to_persist, file_path)
-                persisted_outputs_manifest[scoped_name] = str(file_path.resolve())
-                logger.info(f"Successfully persisted '{scoped_name}' to '{file_path}'.")
-            except Exception as e:
-                # Log error but continue persisting other outputs if possible
+                logger.debug(
+                    f"Attempting to persist output '{declared_output_name}' (from result key '{actual_result_key}') to '{target_file_path}'."
+                )
+
+                # Ensure parent directory exists before serialization
+                target_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+                self._serialize_output(data_to_persist, target_file_path)
+
+                # Use the originally declared output name for the manifest key
+                persisted_outputs_manifest[declared_output_name] = str(target_file_path)
+                logger.info(
+                    f"Successfully persisted '{declared_output_name}' to '{target_file_path}'."
+                )
+
+            except OutputPersisterError:  # Re-raise errors from _serialize_output
+                # Error already logged in _serialize_output or by the serializer itself
+                # Decide if we want to log again or just let it propagate
                 logger.error(
-                    f"Failed to persist output '{scoped_name}' to '{file_path}': {e}",
+                    f"Serialization failed for output '{declared_output_name}' to path '{target_file_path}'."
+                )
+                # Continue to next output, or re-raise if one failure should stop all
+            except OSError as e:  # Catch errors from mkdir
+                logger.error(
+                    f"Could not create directory for output '{declared_output_name}' at '{target_file_path.parent}': {e}",
                     exc_info=True,
                 )
-                # Optionally, re-raise if one failure should stop all:
-                # raise OutputPersisterError(f"Failed to persist output '{output_name}': {e}") from e
+            except Exception as e:
+                # Catch any other unexpected errors for this specific output, re-raising would stop ALL persistence.
+                logger.error(
+                    f"Unexpected error persisting output '{declared_output_name}' to '{target_file_path}': {e}",
+                    exc_info=True,
+                )
 
         return persisted_outputs_manifest
-
-    def _get_default_extension(self, serializer_name: str | None) -> str:
-        # Try to get a default extension from the serializer itself if possible
-        # This is a placeholder; your serializer lookup might provide this.
-        if serializer_name:
-            try:
-                serializer_instance = lookup_serializer(
-                    f".{serializer_name}"
-                )  # Assuming lookup by extension
-                if hasattr(serializer_instance, "DEFAULT_EXTENSION"):
-                    return serializer_instance.DEFAULT_EXTENSION.lstrip(".")
-                # Fallback based on common names
-                if "json" in serializer_name:
-                    return "json"
-                if "pickle" in serializer_name:
-                    return "pkl"
-                if "yaml" in serializer_name:
-                    return "yaml"
-                if "parquet" in serializer_name:
-                    return "parquet"
-                if "csv" in serializer_name:
-                    return "csv"
-            except SerializerError:
-                pass  # Serializer not found by this guess
-        return "dat"  # Generic default
 
     def _serialize_output(
         self,
@@ -109,20 +126,25 @@ class OutputPersister:
         file_path: Path,
     ) -> None:
         """
-        Serializes and writes data to a file using the specified serializer.
-        (Adapted from flowfunc.workflow.outputs._serialize_output)
+        Serializes and writes data to a file using a looked-up serializer.
         """
-        try:
-            # `lookup_serializer` should ideally take the name directly, or adapt suffix
-            # e.g. if name is "json", it looks up ".json"
-            target_serializer_key = file_path.suffix
-            serializer = lookup_serializer(target_serializer_key)
-            serializer(data, file_path)
-        except SerializerError as e:
+        serializer_handler: IOSerializer | None = lookup_serializer(file_path)
+
+        if serializer_handler and serializer_handler.can_dump:
+            try:
+                logger.debug(
+                    f"Using serializer '{serializer_handler.name}' for path '{file_path}'"
+                )
+                serializer_handler.dump(data, file_path)
+            except IOSerializerError as e:
+                raise OutputPersisterError(
+                    f"Serialization failed for {file_path}: {e}"
+                ) from e
+            except Exception as e:
+                raise OutputPersisterError(
+                    f"Unexpected error during serialization of {file_path} with {serializer_handler.name}: {e}"
+                ) from e
+        else:
             raise OutputPersisterError(
-                f"Serializer for '{file_path.suffix}' not found for {file_path}: {e}"
-            ) from e
-        except Exception as e:
-            raise OutputPersisterError(
-                f"Error during serialization of {file_path} with '{file_path.suffix}': {e}"
-            ) from e
+                f"No suitable serializer found or dumping not supported for file type: '{file_path.suffix}' (path: {file_path})"
+            )

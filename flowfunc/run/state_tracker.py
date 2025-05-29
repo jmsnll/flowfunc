@@ -1,5 +1,3 @@
-# flowfunc/run/state_tracker.py
-
 import logging
 from datetime import UTC
 from datetime import datetime
@@ -8,9 +6,7 @@ from typing import Any
 
 from flowfunc.run.summary_model import Status
 from flowfunc.run.summary_model import Summary
-from flowfunc.workflow_definition.utils import (
-    generate_unique_id,  # Assuming this utility
-)
+from flowfunc.workflow_definition.utils import generate_unique_id
 
 logger = logging.getLogger(__name__)
 
