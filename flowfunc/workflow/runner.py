@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 @status("[bold cyan]Loading workflow...")
 def initialise_workflow(
     workflow_path: Path,
-) -> tuple[schema.Workflow, pipefunc.Pipeline]:
+) -> tuple[schema.WorkflowDefinition, pipefunc.Pipeline]:
     workflow_model = loader.from_path(workflow_path.absolute())
     workflow_pipeline = pipeline.from_model(workflow_model)
     return workflow_model, workflow_pipeline
@@ -34,16 +34,16 @@ def load_inputs(input_file: Path) -> dict[str, Any]:
 
 @status("🧩 Resolving inputs...")
 def resolve_inputs(
-    workflow_model: schema.Workflow,
+    workflow_model: schema.WorkflowDefinition,
     pipeline_info: dict[str, Any],
     user_inputs: dict[str, str],
 ) -> dict[str, Any]:
     return inputs.resolve(
         user_inputs,
-        workflow_model.spec.global_inputs,
+        workflow_model.spec.inputs,
         pipeline_info.get("inputs", ()),
         pipeline_info.get("required_inputs", []),
-        workflow_model.spec.config.scope,
+        workflow_model.spec.options.scope,
     )
 
 

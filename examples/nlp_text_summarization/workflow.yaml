@@ -7,14 +7,14 @@ metadata:
 spec:
   default_module: examples.nlp_text_summarization.main
 
-  config:
+  options:
     scope: "nlp"
 
-  global_inputs:
+  inputs:
     text: # This name matches the key used in `pipeline_sentiment.map({"text": texts})`
       description: "A list of input texts to process. Each text will be processed individually."
       type: "list"
-      default:
+      value:
         - "The movie was excellent! The performances were outstanding, and the plot was captivating."
         - "The movie was bad and boring. I found it dull and slow with no gripping moments."
         - "An alright film with a good sense of humor but lacking depth in character development."

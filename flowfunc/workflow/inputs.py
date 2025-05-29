@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from flowfunc.workflow.schema import GlobalInputItem
+from flowfunc.workflow.schema import InputItem
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ def input_has_scope(input_name: str) -> bool:
 
 def resolve(
     user_inputs: dict[str, Any],
-    global_input_definitions: dict[str, GlobalInputItem] | None,
+    global_input_definitions: dict[str, InputItem] | None,
     pipeline_expected_input_names: tuple[str, ...],
     pipeline_required_input_names: list[str],
     scope: str | None,
@@ -81,12 +81,12 @@ def resolve(
         for name, definition in global_input_definitions.items():
             if (
                 name not in resolved
-                and definition.default is not None
+                and definition.value is not None
                 and name in expected_set
             ):
-                resolved[name] = definition.default
+                resolved[name] = definition.value
                 logger.debug(
-                    f"Applied default for global input '{name}': {definition.default!r}"
+                    f"Applied default for global input '{name}': {definition.value!r}"
                 )
             elif name not in expected_set:
                 logger.debug(

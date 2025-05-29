@@ -17,13 +17,14 @@ class KindEnum(str, Enum):
     PIPELINE = "Pipeline"
 
 
-class GlobalInputTypeEnum(str, Enum):
+class InputTypeEnum(str, Enum):
     STRING = "string"
     NUMBER = "number"
     INTEGER = "integer"
     BOOLEAN = "boolean"
     LIST = "list"
     OBJECT = "object"
+    OUTPUT = "output"
 
 
 class ResourcesScopeEnum(str, Enum):
@@ -74,7 +75,7 @@ class Resources(BaseModel):
         return v
 
 
-class PipelineConfig(BaseModel):
+class PipelineOptions(BaseModel):
     validate_type_annotations: bool | None = None
     default_variant: str | dict[str, str] | None = None
 
@@ -88,10 +89,10 @@ class PipelineConfig(BaseModel):
         extra = "forbid"
 
 
-class GlobalInputItem(BaseModel):
-    description: str
-    type: GlobalInputTypeEnum | None = None
-    default: Any | None = None  # Value can be any valid JSON/YAML type
+class InputItem(BaseModel):
+    description: str | None = None
+    type: InputTypeEnum | None = None
+    value: Any | None = None
 
 
 class StepOptions(BaseModel):
@@ -111,11 +112,11 @@ class StepOptions(BaseModel):
         extra = "forbid"
 
 
-class Step(BaseModel):
+class StepDefinition(BaseModel):
     name: str
     func: str | None = None  # FQN string, or simple name if default_module is used
     description: str | None = None
-    inputs: dict[str, str] | None = Field(default_factory=dict)
+    inputs: dict[str, InputItem | str] | None = Field(default_factory=dict)
     parameters: dict[str, Any] | None = Field(default_factory=dict)
     options: StepOptions | None = Field(default_factory=StepOptions)
     resources: Resources | None = Field(default_factory=Resources)
@@ -123,25 +124,67 @@ class Step(BaseModel):
     class Config:
         extra = "forbid"
 
+    @field_validator("inputs", mode="before")
+    @classmethod
+    def normalize_inputs(cls, v: Any) -> dict[str, InputItem]:
+        if not isinstance(v, dict):
+            raise ValueError("inputs must be a dictionary")
 
-class Pipeline(BaseModel):
+        new = {}
+        for key, val in v.items():
+            if isinstance(val, InputItem):
+                new[key] = val
+            elif isinstance(val, dict):
+                new[key] = InputItem(**val)
+            else:
+                new[key] = InputItem(value=val)
+        return new
+
+    def model_dump(self, **kwargs: dict[str, Any] | None) -> dict[str, Any]:
+        base = super().model_dump(**kwargs)
+        base["inputs"] = {k: v.value for k, v in self.inputs.items()}
+        return base
+
+
+class PipelineDefinition(BaseModel):
     default_module: str | None = None
-    config: PipelineConfig | None = Field(default_factory=PipelineConfig)
-    global_inputs: dict[str, GlobalInputItem] | None = Field(default_factory=dict)
-    steps: list[Step] = Field(..., min_length=1)
+    options: PipelineOptions | None = Field(default_factory=PipelineOptions)
+    inputs: dict[str, InputItem | str] = Field(default_factory=dict)
+    steps: list[StepDefinition] = Field(..., min_length=1)
     outputs: dict[str, str] = Field(default_factory=dict)
 
     class Config:
         extra = "forbid"
 
+    @field_validator("inputs", mode="before")
+    @classmethod
+    def normalize_inputs(cls, v: Any) -> dict[str, InputItem]:
+        if not isinstance(v, dict):
+            raise ValueError("inputs must be a dictionary")
 
-class Workflow(BaseModel):
+        new = {}
+        for key, val in v.items():
+            if isinstance(val, InputItem):
+                new[key] = val
+            elif isinstance(val, dict):
+                new[key] = InputItem(**val)
+            else:
+                new[key] = InputItem(value=val)
+        return new
+
+    def model_dump(self, **kwargs: dict[str, Any] | None) -> dict[str, Any]:
+        base = super().model_dump(**kwargs)
+        base["inputs"] = {k: v.value for k, v in self.inputs.items()}
+        return base
+
+
+class WorkflowDefinition(BaseModel):
     apiVersion: str = Field(
         ..., pattern=r"^flowfunc\.dev\/v[0-9]+(?:alpha[0-9]+|beta[0-9]+)?$"
     )
     kind: KindEnum
     metadata: Metadata
-    spec: Pipeline
+    spec: PipelineDefinition
 
     class Config:
         extra = "forbid"

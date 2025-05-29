@@ -5,7 +5,7 @@ import yaml
 
 from flowfunc import locations
 from flowfunc.workflow import loader
-from flowfunc.workflow.schema import Workflow
+from flowfunc.workflow.schema import WorkflowDefinition
 
 
 @pytest.fixture
@@ -55,7 +55,7 @@ def load_example_workflow():
         config = load_example_workflow("my_example")
     """
 
-    def _loader(example_name: str) -> Workflow:
+    def _loader(example_name: str) -> WorkflowDefinition:
         path = (
             locations.project_root() / Path("examples") / example_name / "workflow.yaml"
         )

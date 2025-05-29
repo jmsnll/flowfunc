@@ -5,7 +5,7 @@ metadata:
   version: "1.0.0"
   description: "Loads a batch of images from a directory and processes them."
 spec:
-  global_inputs:
+  inputs:
     image_directory:
       description: "Path to the directory containing images to process."
       type: "string"
@@ -16,7 +16,7 @@ spec:
 
   steps:
     - name: "load_image_batch_from_disk"
-      function: "examples.image_processing.main.load_images_from_directory"
+      func: "examples.image_processing.main.load_images_from_directory"
       description: "Loads all images from a specified directory."
       inputs:
         directory_path: "$global.image_directory"
@@ -25,7 +25,7 @@ spec:
         output_name: "image_item"
 
     - name: "load_and_preprocess"
-      function: "examples.image_processing.main.load_and_preprocess_image"
+      func: "examples.image_processing.main.load_and_preprocess_image"
       description: "Converts an image from the batch to grayscale."
       inputs:
         image_item: "image_item"
@@ -34,7 +34,7 @@ spec:
         mapspec: "image_item[n] -> gray_image[n]"
 
     - name: "segment"
-      function: "examples.image_processing.main.segment_image"
+      func: "examples.image_processing.main.segment_image"
       inputs:
         gray_image: "load_and_preprocess" # This refers to  the output "gray_image"
       options:
@@ -42,7 +42,7 @@ spec:
         mapspec: "gray_image[n] -> segmented_image[n]"
 
     - name: "extract_features"
-      function: "examples.image_processing.main.extract_feature"
+      func: "examples.image_processing.main.extract_feature"
       inputs:
         segmented_image: "segment"
       options:
@@ -50,7 +50,7 @@ spec:
         mapspec: "segmented_image[n] -> feature[n]"
 
     - name: "classify"
-      function: "examples.image_processing.main.classify_object"
+      func: "examples.image_processing.main.classify_object"
       inputs:
         feature: "extract_features"
       options:
@@ -58,7 +58,7 @@ spec:
         mapspec: "feature[n] -> classification[n]"
 
     - name: "aggregate_results"
-      function: "examples.image_processing.main.aggregate_results"
+      func: "examples.image_processing.main.aggregate_results"
       inputs:
         classification: "classify"
       options:

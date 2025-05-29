@@ -5,9 +5,9 @@ from flowfunc.workflow import function
 from flowfunc.workflow import pipeline
 from flowfunc.workflow.exceptions import PipelineBuildError
 from flowfunc.workflow.exceptions import WorkflowSchemaValidationError
-from flowfunc.workflow.schema import Pipeline
-from flowfunc.workflow.schema import Step
-from flowfunc.workflow.schema import Workflow
+from flowfunc.workflow.schema import PipelineDefinition
+from flowfunc.workflow.schema import StepDefinition
+from flowfunc.workflow.schema import WorkflowDefinition
 
 
 @pytest.fixture
@@ -58,23 +58,25 @@ def valid_workflow_dict() -> dict:
 
 
 @pytest.fixture
-def base_pipeline_model(valid_workflow_dict: dict) -> Workflow:
+def base_pipeline_model(valid_workflow_dict: dict) -> WorkflowDefinition:
     """Provides a validated FlowFuncPipelineModel instance."""
     try:
-        return Workflow.model_validate(valid_workflow_dict)
+        return WorkflowDefinition.model_validate(valid_workflow_dict)
     except WorkflowSchemaValidationError as e:
         pytest.fail(f"Test fixture setup failed: Pydantic validation error: {e}")
         raise
 
 
 @pytest.fixture
-def first_step_model(base_pipeline_model: Workflow) -> Step:
+def first_step_model(base_pipeline_model: WorkflowDefinition) -> StepDefinition:
     """Provides the first StepModel from the base_pipeline_model."""
     return base_pipeline_model.spec.steps[0]
 
 
 @pytest.fixture
-def pipefunc_function_from_first_step(first_step_model: Step) -> pipefunc.PipeFunc:
+def pipefunc_function_from_first_step(
+    first_step_model: StepDefinition,
+) -> pipefunc.PipeFunc:
     """Provides a pipefunc.Function created from the first_step_model."""
     return function.from_model(first_step_model)
 
@@ -87,7 +89,7 @@ def test_step_with_only_parameters(valid_workflow_dict) -> None:
         "parameters": {"text_to_be_hashed": "direct_value_from_params"},
         "options": {"output": "hashed_param_value"},
     }
-    step_model = Step.model_validate(step_dict)
+    step_model = StepDefinition.model_validate(step_dict)
     pf_func = function.from_model(step_model)
 
     assert pf_func.defaults["text_to_be_hashed"] == "direct_value_from_params"
@@ -113,7 +115,7 @@ def test_step_with_various_options(valid_workflow_dict) -> None:
             "variant": "gpu_optimized",
         },
     }
-    step_model = Step.model_validate(step_dict)
+    step_model = StepDefinition.model_validate(step_dict)
     pf_func = function.from_model(step_model)
 
     assert pf_func.cache is True
@@ -126,7 +128,7 @@ def test_step_with_various_options(valid_workflow_dict) -> None:
 
 
 def test_step_creation_with_problematic_config_raises_error(
-    first_step_model: Step,
+    first_step_model: StepDefinition,
 ) -> None:
     modified_step_model = first_step_model.model_copy(deep=True)
     modified_step_model.options.renames = {"non_existent_arg": "some_source"}
@@ -136,7 +138,7 @@ def test_step_creation_with_problematic_config_raises_error(
 
 
 def test_step_creation_with_scope_prefixes_renamed_outputs(  # Or inputs, depending on what 'scope' does
-    first_step_model: Step,
+    first_step_model: StepDefinition,
 ) -> None:
     modified_step_model = first_step_model.model_copy(deep=True)
     scope_name = "example_scope"
@@ -159,7 +161,7 @@ def test_single_step_function_forms_valid_pipeline(
 
 
 def test_pipeline_creation_from_model_initializes_correctly(
-    base_pipeline_model: Workflow,
+    base_pipeline_model: WorkflowDefinition,
     valid_workflow_dict: dict,
 ) -> None:
     pipeline_instance = pipeline.from_model(base_pipeline_model.spec)
@@ -204,7 +206,7 @@ def test_pipeline_with_new_import_path(tmp_path, monkeypatch) -> None:
             "outputs": ["doubled_num"],
         },
     }
-    pipeline_model = Workflow.model_validate(pipeline_dict)
+    pipeline_model = WorkflowDefinition.model_validate(pipeline_dict)
     pf_pipeline = pipeline.from_model(pipeline_model.spec)
 
     assert len(pf_pipeline.functions) == 1
@@ -229,7 +231,7 @@ def test_pipeline_with_various_pipeline_configs() -> None:
             }
         ],
     }
-    spec_model = Pipeline.model_validate(spec_dict)
+    spec_model = PipelineDefinition.model_validate(spec_dict)
     pf_pipeline = pipeline.from_model(spec_model)
 
     assert pf_pipeline.validate_type_annotations is True

@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 
-from flowfunc.workflow.schema import Workflow
+from flowfunc.workflow.schema import WorkflowDefinition
 
 console = Console()
 
@@ -36,7 +36,7 @@ def generate_schema(output: Path | None, indent: int) -> None:
         raise click.Abort()
 
     try:
-        schema_dict = Workflow.model_json_schema()
+        schema_dict = WorkflowDefinition.model_json_schema()
         schema_json_str = json.dumps(schema_dict, indent=indent)
 
         if output:

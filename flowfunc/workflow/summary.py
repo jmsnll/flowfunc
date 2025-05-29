@@ -9,7 +9,6 @@ from pydantic import Field
 from pydantic import computed_field
 
 
-
 class Status(enum.Enum):
     FAILED = "failed"
     SUCCESS = "success"

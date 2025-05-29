@@ -4,12 +4,12 @@ import pipefunc
 
 from flowfunc.utils.python import import_callable
 from flowfunc.workflow.exceptions import PipelineBuildError
-from flowfunc.workflow.schema import Workflow
+from flowfunc.workflow.schema import WorkflowDefinition
 
 logger = logging.getLogger(__name__)
 
 
-def from_model(workflow: Workflow, step_index: int) -> pipefunc.PipeFunc:
+def from_model(workflow: WorkflowDefinition, step_index: int) -> pipefunc.PipeFunc:
     """Create a `pipefunc.PipeFunc` from a `StepModel` instance."""
     step = workflow.spec.steps[step_index]
     final_options = step.options.model_dump(exclude_none=True) if step.options else {}
@@ -22,7 +22,7 @@ def from_model(workflow: Workflow, step_index: int) -> pipefunc.PipeFunc:
     resolve_input_renames(final_options, step)
     resolve_input_defaults(final_options, step)
     resolve_resources(
-        final_options, workflow.spec.config.default_resources, step.resources
+        final_options, workflow.spec.options.default_resources, step.resources
     )
     resolve_scope(final_options, step)
     try:
@@ -62,11 +62,11 @@ def resolve_input_defaults(options, step) -> None:
 def resolve_input_renames(options, step):
     renames = {}
     if step.inputs:
-        for func_arg_name, pipeline_source_name in step.inputs.items():
-            if pipeline_source_name.startswith("$global."):
-                global_var_name = pipeline_source_name.split(".", 1)[1]
-                if func_arg_name != global_var_name:
-                    renames[func_arg_name] = global_var_name
+        for name, input_item in step.inputs.items():
+            if input_item.value.startswith("$global."):
+                global_var_name = ".".join(input_item.value.split(".", 1)[1:])
+                if name != global_var_name:
+                    renames[name] = global_var_name
     if renames:
         if "renames" in options and isinstance(options.renames, dict):
             options.renames = {**options.renames, **renames}
