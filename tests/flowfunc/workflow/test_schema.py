@@ -51,12 +51,12 @@ def invalid_schema_yaml_content_wrong_type() -> dict:
 def test_workflow_yaml_init_file_not_found(tmp_path: Path) -> None:
     non_existent_file = tmp_path / "does_not_exist.yaml"
     with pytest.raises(WorkflowLoadError, match=str(non_existent_file)):
-        loader.load_from_path(non_existent_file)
+        loader.from_path(non_existent_file)
 
 
 def test_workflow_yaml_check_model_valid(load_example: pytest.fixture) -> None:
     file_path = load_example("image_processing")
-    _ = loader.load_from_path(file_path)
+    _ = loader.from_path(file_path)
 
 
 def test_model_loads_valid_yaml(
@@ -66,7 +66,7 @@ def test_model_loads_valid_yaml(
     with open(file_path, "w") as f:
         yaml.dump(minimal_valid_yaml_content, f)
 
-    model = loader.load_from_path(file_path)
+    model = loader.from_path(file_path)
 
     assert isinstance(model, Workflow)
     assert model.metadata.name == "minimal-pipeline"
@@ -79,7 +79,7 @@ def test_model_caching(tmp_path: Path, minimal_valid_yaml_content: dict) -> None
     with open(file_path, "w") as f:
         yaml.dump(minimal_valid_yaml_content, f)
 
-    model1 = model2 = loader.load_from_path(file_path)
+    model1 = model2 = loader.from_path(file_path)
 
     assert model1 is model2
 
@@ -91,7 +91,7 @@ def test_model_empty_file_raises_workflow_load_error(tmp_path: Path) -> None:
     with pytest.raises(
         WorkflowLoadError, match="empty or contains no parsable content"
     ):
-        _ = loader.load_from_path(file_path)
+        _ = loader.from_path(file_path)
 
 
 def test_model_malformed_yaml_raises_workflow_load_error(tmp_path: Path) -> None:
@@ -99,7 +99,7 @@ def test_model_malformed_yaml_raises_workflow_load_error(tmp_path: Path) -> None
     file_path.write_text("apiVersion: v1\nkind: Pipeline\n  bad-indent: true")
 
     with pytest.raises(WorkflowLoadError, match="is not a valid YAML file"):
-        _ = loader.load_from_path(file_path)
+        _ = loader.from_path(file_path)
 
 
 def test_model_not_dict_top_level_raises_workflow_load_error(tmp_path: Path) -> None:
@@ -109,7 +109,7 @@ def test_model_not_dict_top_level_raises_workflow_load_error(tmp_path: Path) -> 
         yaml.dump(yaml_list_content, f)
 
     with pytest.raises(WorkflowLoadError, match="Top level must be a mapping"):
-        _ = loader.load_from_path(file_path)
+        _ = loader.from_path(file_path)
 
 
 def test_model_schema_validation_error_missing_required(
@@ -122,7 +122,7 @@ def test_model_schema_validation_error_missing_required(
     with pytest.raises(
         WorkflowLoadError, match="Workflow YAML schema validation failed"
     ):
-        _ = loader.load_from_path(file_path)
+        _ = loader.from_path(file_path)
 
 
 def test_model_schema_validation_error_wrong_type(
@@ -135,4 +135,4 @@ def test_model_schema_validation_error_wrong_type(
     with pytest.raises(
         WorkflowLoadError, match="Workflow YAML schema validation failed"
     ):
-        _ = loader.load_from_path(file_path)
+        _ = loader.from_path(file_path)

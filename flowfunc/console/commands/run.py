@@ -4,10 +4,11 @@ import logging
 from pathlib import Path
 
 import click
+from rich.table import Table
 
+from flowfunc.console import console
 from flowfunc.workflow import runner
-from flowfunc.workflow.context import RunContext
-from flowfunc.workflow.context import Status
+from flowfunc.workflow.summary import Status
 from flowfunc.workflow.utils import generate_unique_id
 
 
@@ -41,8 +42,19 @@ def run(
     if not verbose:
         logging.getLogger().setLevel(logging.INFO)
 
-    ctx = RunContext()
-    ctx.metadata.run_id = generate_unique_id(name)
-    runner.execute_pipeline(ctx, workflow_path, input_file)
+    summary = runner.execute_pipeline(
+        workflow_path, input_file, run_id=generate_unique_id(name)
+    )
 
-    raise SystemExit(0 if ctx.metadata.status == Status.SUCCESS else 1)
+    display_outputs_table(summary.persisted_outputs)
+
+    raise SystemExit(0 if summary.status == Status.SUCCESS else 1)
+
+
+def display_outputs_table(persisted_outputs):
+    table = Table(title="Outputs", show_header=True, header_style="bold magenta")
+    table.add_column("Output Key")
+    table.add_column("Path", overflow="fold")
+    for k, v in persisted_outputs.items():
+        table.add_row(k, str(v))
+    console.print(table)

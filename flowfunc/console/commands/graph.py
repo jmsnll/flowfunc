@@ -2,29 +2,17 @@ from pathlib import Path
 
 import click
 
-from flowfunc import workflow
 from flowfunc.console import console
-from flowfunc.workflow.context import RunContext
+from flowfunc.workflow import loader
+from flowfunc.workflow import pipeline
 
 
 @click.command(name="graph", help="Graphs a workflow using matplotlib.")
-@click.argument("workflow_path", type=click.Path(exists=True, dir_okay=False))
+@click.argument(
+    "workflow_path", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
 def graph(workflow_path: str) -> None:
-    ctx = RunContext()
-
-    try:
-        console.status("[bold green]Loading workflow...", spinner="dots")
-        workflow.load(Path(workflow_path), ctx.workflow)
-
-        console.log(
-            f"[green]✅ Loaded workflow:[/green] {ctx.workflow.model.metadata.name}"
-        )
-        console.log("[cyan]🧠 Visualizing pipeline with matplotlib...[/cyan]")
-
-        ctx.workflow.pipeline.visualize_matplotlib()
-
-        console.log("[bold green]✅ Graph visualization complete.[/bold green]")
-
-    except Exception as e:
-        console.log(f"[bold red]❌ Error while graphing: {e}[/bold red]")
-        raise click.Abort()
+    console.status("[bold green]Loading workflow...", spinner="dots")
+    workflow_model = loader.from_path(workflow_path.absolute())
+    workflow_pipeline = pipeline.from_model(workflow_model)
+    workflow_pipeline.visualize_matplotlib()

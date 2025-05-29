@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def load_from_dict(raw_data: dict) -> Workflow:
+def from_dict(raw_data: dict) -> Workflow:
     if raw_data is None:
         raise WorkflowLoadError(
             "Workflow file is empty or contains no parsable content."
@@ -41,7 +41,7 @@ def load_from_dict(raw_data: dict) -> Workflow:
         ) from e
 
 
-def load_from_path(path: Path) -> Workflow:
+def from_path(path: Path) -> Workflow:
     try:
         with path.open("rb") as f:
             raw_data = yaml.safe_load(f)
@@ -54,6 +54,6 @@ def load_from_path(path: Path) -> Workflow:
         raise WorkflowLoadError(f"Could not read file '{path.as_posix()}': {e}") from e
 
     try:
-        return load_from_dict(raw_data)
+        return from_dict(raw_data)
     except FlowFuncCoreError as e:
         raise WorkflowLoadError(f"Failed to load '{path.as_posix()}': {e}") from e

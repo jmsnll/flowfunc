@@ -62,7 +62,7 @@ def load_example_workflow():
         if not path.exists():
             raise FileNotFoundError(f"Workflow not found at {path}")
         with path.open("rb"):
-            return loader.load_from_path(path)
+            return loader.from_path(path)
             # return yaml.safe_load(f)
 
     return _loader

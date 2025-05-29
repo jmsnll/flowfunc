@@ -2,9 +2,9 @@ from pathlib import Path
 
 import click
 
-from flowfunc import workflow
 from flowfunc.console import console
-from flowfunc.workflow.context import RunContext
+from flowfunc.workflow import loader
+from flowfunc.workflow import pipeline
 
 
 @click.command("docs", help="Displays the documentation for a workflow.")
@@ -15,10 +15,10 @@ from flowfunc.workflow.context import RunContext
     "-v", "--verbose", is_flag=True, help="Print extra info about the workflow file."
 )
 def docs(workflow_path: Path, verbose: bool) -> None:
-    ctx = RunContext()
     try:
-        workflow.load(workflow_path, ctx.workflow)
-        ctx.workflow.pipeline.print_documentation()
+        workflow_model = loader.from_path(workflow_path.absolute())
+        workflow_pipeline = pipeline.from_model(workflow_model)
+        workflow_pipeline.print_documentation()
     except Exception as e:
         console.print(f"[red]Failed to generate documentation:[/] {e}")
         raise click.Abort()

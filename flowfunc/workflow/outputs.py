@@ -8,10 +8,10 @@ from flowfunc.io import serializer
 logger = logging.getLogger(__name__)
 
 
-def persist_workflow_outputs(
-    workflow_results: dict[str, Any],
-    workflow_output_definitions: dict[str, str] | None,
-    target_output_directory: Path,
+def persist(
+    results: dict[str, Any],
+    output_definitions: dict[str, str] | None,
+    output_directory: Path,
 ) -> dict[str, str]:
     """
     Saves declared workflow outputs to disk based on their definitions.
@@ -21,30 +21,30 @@ def persist_workflow_outputs(
     logger.info("Persisting workflow outputs...")
     manifest: dict[str, str] = {}
 
-    if not workflow_output_definitions or not workflow_results:
+    if not output_definitions or not results:
         logger.debug(
             "No output definitions or no pipefunc results; nothing to persist."
         )
         return manifest
 
-    for output_name, output_path in workflow_output_definitions.items():
+    for output_name, output_path in output_definitions.items():
         if not output_path:
             logger.debug(
                 f"Output '{output_name}' has no 'path' defined; skipping persistence."
             )
             continue
-        if output_name not in workflow_results:
+        if output_name not in results:
             logger.warning(
                 f"Output '{output_name}' defined with path '{output_path}' but not found in pipefunc results; skipping."
             )
             continue
 
         # Ensure path is not absolute, resolve relative to target_output_directory
-        target_save_path = (target_output_directory / output_path).resolve()
+        target_save_path = (output_directory / output_path).resolve()
 
         try:
             relative_path_str = _serialize_output(
-                workflow_results[output_name].output,
+                results[output_name].output,
                 output_name=output_name,
                 target_path=target_save_path,
             )
