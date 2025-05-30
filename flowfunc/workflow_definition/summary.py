@@ -54,7 +54,7 @@ class Summary(BaseModel):
         """Total duration of the run in seconds, computed from start and end times."""
         return self.run_dir / "outputs"
 
-    def finished(self):
+    def finished(self) -> None:
         self.end_time = datetime.now(UTC)
         self.status = Status.SUCCESS
 

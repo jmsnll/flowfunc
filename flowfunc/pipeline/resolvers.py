@@ -26,7 +26,7 @@ def resolve_function_path(
     Mutates `options` to add the 'func' key.
     """
     default_module = workflow.spec.default_module
-    function_path_str = step.func  # func is the string path from the schema
+    function_path_str = step.func
 
     if not function_path_str:
         if default_module and step.name:
@@ -187,7 +187,7 @@ def resolve_general_pipeline_options(
 ) -> None:
     """
     Resolves general keyword arguments for the Pipeline constructor from workflow.spec.options.
-    (e.g., lazy, debug, profile, cache_type, cache_kwargs, validate_type_annotations)
+    (e.g., lazy, debug, profile, cache_type, cache_kwargs, validate_type_annotations).
     """
     if workflow.spec.options:
         options_data = workflow.spec.options.model_dump(

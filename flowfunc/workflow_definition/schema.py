@@ -214,18 +214,14 @@ class StepDefinition(BaseModel):
         workflow_default_module: str | None,
         workflow_global_resources: Resources | None,
     ) -> dict[str, Any]:
-        """
-        Generates the keyword arguments dictionary for instantiating a pipefunc.PipeFunc.
-        """
-        # Start with options defined in StepOptions (extra='allow' passes them through)
+        """Generates the keyword arguments dictionary for instantiating a pipefunc.PipeFunc."""
         pf_options: dict[str, Any] = (
             self.options.model_dump(exclude_none=True, by_alias=True)
             if self.options
             else {}
         )
 
-        # Outputs for PipeFunc
-        if self.output_name:  # User-defined list of output names
+        if self.output_name:
             pf_options["output_name"] = self.output_name
         elif self.name:  # Default to step name if no explicit outputs list
             pf_options["output_name"] = self.name
@@ -234,7 +230,6 @@ class StepDefinition(BaseModel):
                 "Step must have a name to determine default PipeFunc output."
             )
 
-        # Resolved attributes
         pf_options["func"] = self._get_callable(workflow_default_module)
 
         renames = self._get_pipefunc_renames()
@@ -244,28 +239,15 @@ class StepDefinition(BaseModel):
         defaults = self._get_pipefunc_defaults()
         if defaults:
             pf_options["defaults"] = {**pf_options.get("defaults", {}), **defaults}
-            # Also add to 'parameters' for PipeFunc if they aren't automatically picked from defaults
-            # PipeFunc uses 'defaults' for default values of function arguments if not provided
-            # 'parameters' is the pool of available parameters.
-            # Often, what's in 'defaults' implies they are also 'parameters'.
-            # Let's assume PipeFunc handles this: defaults are for function args.
-            # If `self.parameters` are *also* meant to be available to the *pipeline context*
-            # (like global inputs), that's a different mechanism in pipefunc.
-            # For now, `defaults` directly sets default values for the function's arguments.
 
         resources = self._get_pipefunc_resources(workflow_global_resources)
         if resources:
             pf_options["resources"] = resources
 
         scope = self._get_pipefunc_scope()
-        if (
-            scope is not None
-        ):  # Important to only set if not None, to allow PipeFunc default behavior
+        if scope is not None:
+            # Important to only set if not None, to allow PipeFunc default behavior
             pf_options["scope"] = scope
-
-        # Note: The 'inputs' argument for PipeFunc (mapping arg names to upstream outputs)
-        # is typically inferred by pipefunc from function signature and renames.
-        # If explicit 'inputs' mapping is needed beyond renames, StepOptions could carry it.
 
         return pf_options
 
@@ -298,9 +280,7 @@ class WorkflowDefinition(BaseModel):
     model_config = {"extra": "forbid"}
 
     def get_pipeline_constructor_kwargs(self) -> dict[str, Any]:
-        """
-        Generates the keyword arguments for instantiating a pipefunc.Pipeline.
-        """
+        """Generates the keyword arguments for instantiating a pipefunc.Pipeline."""
         kwargs: dict[str, Any] = {}
         if self.spec.options:
             options_data = self.spec.options.model_dump(
@@ -325,7 +305,7 @@ class WorkflowDefinition(BaseModel):
                 # Pass the Pydantic model instance; pipefunc will use Resources.maybe_from_dict
                 kwargs["default_resources"] = self.spec.options.default_resources
 
-            # Handle scope specifically: spec.options.scope can provide pipeline scope
+            # Handle scope specifically
             if self.spec.options.scope is not None:
                 kwargs["scope"] = self.spec.options.scope
 

@@ -17,7 +17,9 @@ class RunStateTracker:
     It creates and updates a Summary object.
     """
 
-    def __init__(self, run_id: str | None = None, custom_run_name: str | None = None):
+    def __init__(
+        self, run_id: str | None = None, custom_run_name: str | None = None
+    ) -> None:
         self._run_id = run_id or generate_unique_id(custom_run_name)
         self._summary_data: Summary | None = None
         self._initial_custom_run_name = custom_run_name  # For logging or if needed

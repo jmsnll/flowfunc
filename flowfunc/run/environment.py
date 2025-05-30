@@ -1,29 +1,21 @@
-# flowfunc/run/environment.py
-
 import logging
 from pathlib import Path
 from typing import Any
 
-# Assuming load_flowfunc_toml is moved to flowfunc.config.loader
-from flowfunc.config.loader import ConfigLoaderError
 from flowfunc.config.loader import load_flowfunc_toml
-from flowfunc.locations import ensure  # Assuming these utilities
+from flowfunc.exceptions import ConfigLoaderError
+from flowfunc.exceptions import RunEnvironmentManagerError
+from flowfunc.locations import ensure
 from flowfunc.locations import project_root
 
 logger = logging.getLogger(__name__)
 
 
-class RunEnvironmentManagerError(Exception):
-    """Custom exception for run environment setup errors."""
-
-
 class RunEnvironmentManager:
-    """
-    Manages the setup of the run environment, including directories and project configuration.
-    """
+    """Manages the setup of the run environment, including directories and project configuration."""
 
-    def __init__(self, config_file_path: Path | None = None):
-        self._project_root = project_root()  # Or pass explicitly
+    def __init__(self, config_file_path: Path | None = None) -> None:
+        self._project_root = project_root()
         self._config_file_path = config_file_path
         try:
             self.project_config: dict[str, Any] = load_flowfunc_toml(
@@ -49,7 +41,6 @@ class RunEnvironmentManager:
         Returns:
             tuple[Path, Path]: (run_dir, output_dir)
         """
-        # Adapted from flowfunc.locations.workflow_run_dir_actual and workflow_output_dir
         if not workflow_name:
             raise RunEnvironmentManagerError(
                 "Workflow name cannot be empty for setting up run directories."

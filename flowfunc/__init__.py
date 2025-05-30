@@ -1,8 +1,4 @@
-# flowfunc/__init__.py (Updated)
-
-"""
-FlowFunc - A Python library to supercharge your `pipefunc` workflows.
-"""
+"""FlowFunc - A Python library to supercharge your `pipefunc` workflows."""
 
 from flowfunc.__version__ import __version__
 from flowfunc.run import Status

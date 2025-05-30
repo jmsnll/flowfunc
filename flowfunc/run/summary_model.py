@@ -1,5 +1,3 @@
-# flowfunc/run/summary_model.py (Modified from flowfunc/workflow/summary.py)
-
 import enum
 from datetime import UTC
 from datetime import datetime

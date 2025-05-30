@@ -4,16 +4,13 @@ from typing import Any
 
 import toml
 
+from flowfunc.exceptions import ConfigLoaderError
 from flowfunc.locations import project_root
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG_FILE_NAME = "pyproject.toml"
 DEFAULT_FLOWFUNC_CONFIG_KEY = "tool.flowfunc"
-
-
-class ConfigLoaderError(Exception):
-    """Custom exception for configuration loading errors."""
 
 
 def load_flowfunc_toml(

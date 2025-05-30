@@ -1,27 +1,18 @@
-# flowfunc/run/input_provider.py
-
 import json
 import logging
 from pathlib import Path
 from typing import Any
 
+from flowfunc.exceptions import InputProviderError
+
 logger = logging.getLogger(__name__)
 
 
-class InputProviderError(Exception):
-    """Custom exception for input providing errors."""
-
-
 class InputProvider:
-    """
-    Loads user-provided inputs from various sources (file, JSON string).
-    """
+    """Loads user-provided inputs from various sources (file, JSON string)."""
 
     def load_from_file(self, file_path: Path) -> dict[str, Any]:
-        """
-        Loads inputs from a JSON file.
-        (Adapted from flowfunc.workflow.inputs.from_file)
-        """
+        """Loads inputs from a JSON file."""
         logger.info(f"Loading inputs from file: {file_path}")
 
         if not file_path.exists() or not file_path.is_file():
@@ -50,10 +41,7 @@ class InputProvider:
         return data
 
     def load_from_json_string(self, json_string: str) -> dict[str, Any]:
-        """
-        Loads inputs from a JSON string.
-        (Adapted from flowfunc.workflow.inputs.from_json)
-        """
+        """Loads inputs from a JSON string."""
         logger.info("Loading inputs from JSON string.")
         if not json_string:
             logger.warning(

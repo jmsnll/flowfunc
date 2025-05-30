@@ -3,18 +3,17 @@ import pickle
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from typing import TypeAlias
 
 import yaml
 
 from flowfunc.exceptions import SerializerError
 
-DumperFuncType: TypeAlias = Callable[[Any, Path, dict[str, Any]], None]
-LoaderFuncType: TypeAlias = Callable[[Path, dict[str, Any]], Any]
+type DumperFuncType = Callable[[Any, Path, dict[str, Any]], None]
+type LoaderFuncType = Callable[[Path, dict[str, Any]], Any]
 
 
 def _serialize_json(data: Any, path: Path, **kwargs) -> None:
-    options = {"indent": 2, "default": str, **kwargs}  # Common defaults, overridable
+    options = {"indent": 2, "default": str, **kwargs}  # overridable
     with path.open("w", encoding="utf-8") as f:
         json.dump(data, f, **options)
 
@@ -24,14 +23,12 @@ def _deserialize_json(path: Path, **kwargs) -> Any:
         return json.load(f, **kwargs)
 
 
-def _serialize_text(
-    data: Any, path: Path, **kwargs
-) -> None:  # kwargs mostly ignored for text
+def _serialize_text(data: Any, path: Path, **kwargs) -> None:
     with path.open("w", encoding="utf-8") as f:
         f.write(str(data))
 
 
-def _deserialize_text(path: Path, **kwargs) -> str:  # kwargs mostly ignored for text
+def _deserialize_text(path: Path, **kwargs) -> str:
     with path.open("r", encoding="utf-8") as f:
         return f.read()
 
@@ -58,9 +55,7 @@ def _deserialize_yaml(path: Path, **kwargs) -> Any:
 
 
 class Serializer:
-    """
-    A consistent interface for dumping and loading data for a specific format.
-    """
+    """A consistent interface for dumping and loading data for a specific format."""
 
     def __init__(
         self,
@@ -68,7 +63,7 @@ class Serializer:
         dumper: DumperFuncType | None,
         loader: LoaderFuncType | None,
         default_extension: str,
-    ):
+    ) -> None:
         self._name = name
         self._dumper = dumper
         self._loader = loader
@@ -81,11 +76,9 @@ class Serializer:
                 f"Serializer '{self._name}' does not support dumping (suffix: {path.suffix})."
             )
         try:
-            # Ensure parent directory exists
             path.parent.mkdir(parents=True, exist_ok=True)
             self._dumper(data, path, **kwargs)  # type: ignore
         except Exception as e:
-            # Catch specific errors from underlying libraries if possible for better messages
             raise SerializerError(
                 f"Error dumping data to {path} using {self._name} serializer: {e}"
             ) from e
@@ -99,9 +92,8 @@ class Serializer:
         try:
             return self._loader(path, **kwargs)  # type: ignore
         except FileNotFoundError:
-            raise  # Re-raise FileNotFoundError as it's a common, clear error
+            raise
         except Exception as e:
-            # Catch specific errors from underlying libraries if possible
             raise SerializerError(
                 f"Error loading data from {path} using {self.name} serializer: {e}"
             ) from e
@@ -118,8 +110,6 @@ class Serializer:
     def can_load(self) -> bool:
         return self._loader is not None
 
-
-# --- Registry of Serializer Instances ---
 
 # Define instances of the Serializer for each supported format.
 # This makes the capabilities (dump/load) explicit for each extension.
@@ -184,7 +174,7 @@ def lookup_serializer(key: str | Path) -> Serializer | None:
         suffix = key.suffix.lower()
     elif isinstance(key, str):
         suffix = key.lower()
-        if not suffix.startswith("."):  # Ensure it's a suffix like ".json"
+        if not suffix.startswith("."):
             suffix = "." + suffix
     else:
         raise TypeError("lookup_serializer key must be a Path or string suffix.")

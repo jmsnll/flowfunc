@@ -17,16 +17,9 @@ class PipelineBuilder:
     to generate the necessary options for `pipefunc.PipeFunc` and `pipefunc.Pipeline`.
     """
 
-    def __init__(self):
-        """Initializes the PipelineBuilder."""
-        # This constructor is now very simple.
-        # It could be used for future configurations related to the build process itself, if any.
-        logger.debug("PipelineBuilder initialized.")
-
-    def build(self, workflow_model: WorkflowDefinition) -> pipefunc.Pipeline:
-        """
-        Creates a pipefunc.Pipeline from the validated workflow model.
-        """
+    @staticmethod
+    def build(workflow_model: WorkflowDefinition) -> pipefunc.Pipeline:
+        """Creates a pipefunc.Pipeline from the validated workflow model."""
         workflow_metadata_name = (
             workflow_model.metadata.name
         )  # Assuming this path is correct
@@ -34,14 +27,8 @@ class PipelineBuilder:
 
         funcs: list[pipefunc.PipeFunc] = []
 
-        # WorkflowSpec now validates that steps is not empty.
-        # No need for an explicit check here if relying on Pydantic validation.
-
         for step_model in workflow_model.spec.steps:
             try:
-                # Delegate option generation to the StepDefinition model itself.
-                # The StepDefinition model needs access to parts of the overall workflow
-                # (like default_module, global_resources) to correctly resolve all its options.
                 pipe_func_options = step_model.to_pipefunc_options(
                     workflow_default_module=workflow_model.spec.default_module,
                     workflow_global_resources=(
@@ -66,9 +53,7 @@ class PipelineBuilder:
 
                 funcs.append(pipefunc.PipeFunc(**pipe_func_options))
 
-            except (
-                PipelineBuildError
-            ):  # Re-raise errors from to_pipefunc_options or PipeFunc init
+            except PipelineBuildError:
                 raise
             except Exception as e:  # Catch other unexpected errors during this step
                 step_name_for_error = step_model.name or "(unnamed step)"
@@ -81,7 +66,6 @@ class PipelineBuilder:
                     f"Original error: {type(e).__name__}: {e}"
                 ) from e
 
-        # Delegate pipeline constructor keyword argument generation to the WorkflowDefinition model
         pipeline_constructor_kwargs = workflow_model.get_pipeline_constructor_kwargs()
 
         try:
@@ -89,7 +73,6 @@ class PipelineBuilder:
                 f"Instantiating pipefunc.Pipeline for '{workflow_metadata_name}' with "
                 f"{len(funcs)} funcs and kwargs: {pipeline_constructor_kwargs}"
             )
-            # `funcs` is the first positional argument for pipefunc.Pipeline
             pipeline = pipefunc.Pipeline(funcs, **pipeline_constructor_kwargs)
 
             logger.info(
@@ -103,7 +86,7 @@ class PipelineBuilder:
             )
             # Provide more context if it's a TypeError, which often happens with **kwargs issues
             if isinstance(e, TypeError):
-                logger.error(
+                logger.exception(
                     f"TypeError during pipefunc.Pipeline instantiation for '{workflow_metadata_name}'. "
                     f"Ensure pipeline_constructor_kwargs are valid for the Pipeline constructor. "
                     f"Kwargs passed: {pipeline_constructor_kwargs}. Error: {e}",

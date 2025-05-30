@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 
-from flowfunc.workflow.schema import WorkflowDefinition
+from flowfunc import WorkflowDefinition
 
 console = Console()
 

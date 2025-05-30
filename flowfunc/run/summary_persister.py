@@ -1,21 +1,14 @@
-# flowfunc/run/summary_persister.py
-
 import logging
 from pathlib import Path
 
-from .summary_model import Summary  # Assuming summary_model.py is in the same directory
+from flowfunc.exceptions import SummaryPersistenceError
+from flowfunc.run.summary_model import Summary
 
 logger = logging.getLogger(__name__)
 
 
-class SummaryPersistenceError(Exception):
-    """Custom exception for summary persistence errors."""
-
-
 class SummaryPersister:
-    """
-    Saves the final run summary to a file.
-    """
+    """Saves the final run summary to a file."""
 
     def save(self, summary_data: Summary, file_name: str = "summary.json") -> Path:
         """

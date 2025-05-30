@@ -1,5 +1,3 @@
-# flowfunc/pipeline/executor.py
-
 import logging
 from typing import Any
 
@@ -11,16 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineExecutor:
-    """
-    Executes a `pipefunc.Pipeline` with resolved inputs.
-    """
+    """Executes a `pipefunc.Pipeline` with resolved inputs."""
 
     def execute(
         self, pipeline: Pipeline, resolved_inputs: dict[str, Any], name: str
     ) -> dict[str, Any]:
-        """
-        Executes the pipeline using the .map() method.
-        """
+        """Executes the pipeline using the .map() method."""
         pipeline_name = name or "Unnamed Pipeline"
         logger.info(f"Executing pipeline: {pipeline_name}")
         logger.debug(f"Pipeline inputs for execution: {resolved_inputs}")

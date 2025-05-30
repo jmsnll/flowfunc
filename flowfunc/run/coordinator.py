@@ -9,6 +9,7 @@ from typing import Any
 from pipefunc import Pipeline
 
 from flowfunc.console.reporter import ConsoleReporter
+from flowfunc.exceptions import WorkflowRunError
 from flowfunc.pipeline.builder import PipelineBuilder
 from flowfunc.pipeline.builder import PipelineBuildError
 from flowfunc.pipeline.executor import PipelineExecutionError
@@ -32,10 +33,6 @@ from flowfunc.workflow_definition.loader import WorkflowDefinitionLoaderError
 logger = logging.getLogger(__name__)
 
 
-class WorkflowRunError(Exception):
-    """Base exception for errors during workflow run coordination."""
-
-
 class WorkflowRunCoordinator:
     """
     Orchestrates the entire lifecycle of a workflow run,
@@ -53,11 +50,9 @@ class WorkflowRunCoordinator:
         pipeline_executor: PipelineExecutor | None = None,
         output_persister: OutputPersister | None = None,
         summary_persister: SummaryPersister | None = None,
-        # Optional console reporter for CLI interactions
         reporter: ConsoleReporter | None = None,
-        # Configuration for environment manager if not injected
         project_config_path: Path | None = None,
-    ):
+    ) -> None:
         self.definition_loader = definition_loader or WorkflowDefinitionLoader()
         self.pipeline_builder = pipeline_builder or PipelineBuilder()
         self.env_manager = env_manager or RunEnvironmentManager(
@@ -68,19 +63,17 @@ class WorkflowRunCoordinator:
         self.pipeline_executor = pipeline_executor or PipelineExecutor()
         self.output_persister = output_persister or OutputPersister()
         self.summary_persister = summary_persister or SummaryPersister()
-        self.reporter = reporter  # Can be None if not used (e.g. programmatic run)
+        self.reporter = reporter
 
     def execute_workflow(
         self,
         workflow_file_path: Path,
-        input_data: dict[str, Any] | None = None,  # For direct input dict
-        input_file_path: Path | None = None,  # For input file
+        input_data: dict[str, Any] | None = None,
+        input_file_path: Path | None = None,
         custom_run_name: str | None = None,
-        custom_run_id: str | None = None,  # Allow overriding run_id for reruns etc.
+        custom_run_id: str | None = None,
     ) -> Summary:
-        """
-        Executes a workflow from a definition file with specified inputs.
-        """
+        """Executes a workflow from a definition file with specified inputs."""
         if self.reporter:
             self.reporter.print_welcome_message()
 
@@ -88,7 +81,7 @@ class WorkflowRunCoordinator:
             run_id=custom_run_id, custom_run_name=custom_run_name
         )
         run_id = state_tracker.run_id
-        summary: Summary | None = None  # To hold the final summary
+        summary: Summary | None = None
 
         try:
             with self._report_status("Loading workflow definition..."):
@@ -118,7 +111,7 @@ class WorkflowRunCoordinator:
                     raw_user_inputs = self.input_provider.load_from_file(
                         input_file_path
                     )
-            elif input_data is not None:  # Check for not None explicitly
+            elif input_data is not None:
                 raw_user_inputs = input_data
                 logger.info("Using directly provided input data.")
             else:
@@ -149,11 +142,10 @@ class WorkflowRunCoordinator:
                 persisted_outputs_manifest = self.output_persister.persist(
                     results=pipeline_results,
                     workflow_model=workflow_model,
-                    output_dir=summary.output_dir,  # Use output_dir from summary
+                    output_dir=summary.output_dir,
                 )
             state_tracker.update_persisted_outputs(persisted_outputs_manifest)
 
-            # 8. Finalize Run State (Success)
             state_tracker.complete_run(status=Status.SUCCESS)
 
         except (
@@ -168,13 +160,22 @@ class WorkflowRunCoordinator:
             Exception,
         ) as e:
             logger.error(f"Workflow run '{run_id}' failed: {e}", exc_info=True)
-            if (
-                state_tracker and state_tracker._summary_data
-            ):  # Check if summary was initialized
+            if state_tracker and state_tracker._summary_data:
                 state_tracker.complete_run(status=Status.FAILED, error_message=str(e))
-            else:  # Critical failure before state_tracker could init summary
+            else:
+                # Critical failure before state_tracker could init summary
                 # Create a minimal summary for error reporting if possible
                 # This part might need more robust handling depending on when error can occur
+                workflow_name = (
+                    getattr(workflow_model, "metadata.name", "unknown")
+                    if "workflow_model" in locals()
+                    else "unknown"
+                )
+                run_dir = (
+                    Path(self.env_manager.runs_base_dir / workflow_name / run_id)
+                    if self.env_manager
+                    else f"Unknown Run Directory ({run_id=})"
+                )
                 minimal_summary = Summary(
                     run_id=run_id,
                     workflow_name=getattr(
@@ -184,40 +185,28 @@ class WorkflowRunCoordinator:
                     else "Unknown Workflow",
                     workflow_file=workflow_file_path,
                     status=Status.FAILED,
-                    run_dir=Path(
-                        self.env_manager.runs_base_dir
-                        / (
-                            getattr(workflow_model, "metadata.name", "unknown")
-                            if "workflow_model" in locals()
-                            else "unknown"
-                        )
-                        / run_id
-                    )
-                    if self.env_manager
-                    else Path(f".flowfunc_runs/unknown/{run_id}"),
+                    run_dir=run_dir,
                     error_message=str(e),
-                    start_time=datetime.now(UTC),  # Approximation
-                )
-                summary = (
-                    minimal_summary  # Ensure summary is assigned for finally block
+                    start_time=summary.start_time,
+                    end_time=datetime.now(UTC),
                 )
 
-            # Re-raise as a generic WorkflowRunError or let specific error propagate
+                # Ensure summary is assigned for finally block
+                summary = minimal_summary
+
             raise WorkflowRunError(f"Run '{run_id}' failed.") from e
         finally:
-            if summary:  # Ensure summary object exists
-                # 9. Save Summary
+            if summary:
                 try:
                     with self._report_status("Saving run summary..."):
                         self.summary_persister.save(summary)
                 except Exception as e_sum:  # pylint: disable=broad-except
+                    # Do not re-raise here, the original error (if any) is more important.
                     logger.error(
                         f"Failed to save summary for run '{run_id}': {e_sum}",
                         exc_info=True,
                     )
-                    # Do not re-raise here, the original error (if any) is more important.
 
-                # 10. Report to Console (if reporter is available)
                 if self.reporter:
                     if (
                         "persisted_outputs_manifest" in locals()
@@ -230,7 +219,7 @@ class WorkflowRunCoordinator:
                     f"Critical error in run '{run_id}': No summary data was generated to save or report."
                 )
 
-        return summary  # Return the completed Summary object
+        return summary
 
     def _report_status(self, message: str):
         """Helper to use console reporter's status context manager if available."""
