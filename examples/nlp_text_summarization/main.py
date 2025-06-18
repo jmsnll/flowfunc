@@ -1,15 +1,30 @@
+from typing import List, Dict
+
 import nltk
 import numpy as np
 from nltk.probability import FreqDist
 from nltk.tokenize import sent_tokenize
 from nltk.tokenize import word_tokenize
 
-nltk.download("punkt_tab", quiet=True)
+nltk.download("punkt", quiet=True)
 nltk.download("stopwords", quiet=True)
 
 
 # Step 1: Text Tokenization
-def tokenize_text(text):
+def tokenize_text(text: str) -> List[str]:
+    """
+    Tokenizes the input text into a list of words.
+
+    This function converts the text to lowercase, splits it into individual words,
+    and filters out common English "stop words" (e.g., 'the', 'a', 'is') and
+    any tokens that are not purely alphabetic.
+
+    Args:
+        text: The original text to be summarized.
+
+    Returns:
+        A list of cleaned, significant words from the text.
+    """
     from nltk.corpus import stopwords
 
     words = word_tokenize(text.lower())
@@ -18,14 +33,40 @@ def tokenize_text(text):
 
 
 # Step 2: Keyword Extraction
-def extract_keywords(tokens):
+def extract_keywords(tokens: List[str]) -> List[str]:
+    """
+    Identifies the most frequent words in a list of tokens to serve as keywords.
+
+    This function calculates the frequency of each word and returns the top 5
+    most common words, which are considered the primary keywords of the text.
+
+    Args:
+        tokens: A list of words, typically from the `tokenize_text` function.
+
+    Returns:
+        A list containing the 5 most common keywords.
+    """
     freq_dist = FreqDist(tokens)
     common_keywords = freq_dist.most_common(5)
     return [word for word, _ in common_keywords]
 
 
 # Step 3: Summary Generation
-def generate_summary(text, keywords):
+def generate_summary(text: str, keywords: List[str]) -> str:
+    """
+    Creates a brief summary of the text based on keyword relevance.
+
+    The function splits the original text into sentences and selects those that
+    contain any of the specified keywords. It then joins the first two of these
+    "important" sentences to form the summary.
+
+    Args:
+        text: The original text to be summarized.
+        keywords: A list of important keywords to look for in the sentences.
+
+    Returns:
+        A string containing a concise, keyword-based summary.
+    """
     sentences = sent_tokenize(text)
     important_sentences = [
         sentence
@@ -36,7 +77,20 @@ def generate_summary(text, keywords):
 
 
 # Step 4: Sentiment Analysis
-def analyze_sentiment(summary) -> str:
+def analyze_sentiment(summary: str) -> str:
+    """
+    Performs a simplified sentiment analysis on the summary text.
+
+    It determines the sentiment by counting the presence of predefined positive and
+    negative words. The sentiment is classified as "Positive", "Negative", or
+    "Neutral" based on whether positive or negative words are more frequent.
+
+    Args:
+        summary: The summary text to be analyzed.
+
+    Returns:
+        A string indicating the sentiment: "Positive", "Negative", or "Neutral".
+    """
     # Simplified sentiment analysis: More positive words = Positive sentiment
     positive_words = {"good", "great", "excellent", "positive", "fortunate"}
     negative_words = {"bad", "terrible", "poor", "negative", "unfortunate"}
@@ -50,7 +104,19 @@ def analyze_sentiment(summary) -> str:
 
 
 # Step 5: Summarization Result Aggregation
-def aggregate_summarization(sentiment):
+def aggregate_summarization(sentiment: np.ndarray) -> Dict[str, float]:
+    """
+    Aggregates sentiment analysis results into a summary dictionary.
+
+    This function takes one or more sentiment labels and counts the occurrences
+    of each type ("Positive", "Negative", "Neutral"), returning the final counts.
+
+    Args:
+        sentiment: A single sentiment string or a list of sentiment strings.
+
+    Returns:
+        A dictionary with the counts for each sentiment category.
+    """
     # Convert the sentiment masked array to a list
     sentiment_list = np.array(sentiment).tolist()
 
