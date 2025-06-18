@@ -14,10 +14,13 @@ def fetch_pokemon_data(pokemon_id: int) -> Dict[str, Any]:
     """
     url = f"https://pokeapi.co/api/v2/pokemon/{pokemon_id}"
     print(f"Fetching data for Pokémon ID: {pokemon_id}")
+
+    fields_to_keep = {        'id',        'name',        'types',        'height',        'weight',    }
+
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()  # Raise an exception for bad status codes
-        return response.json()
+        return {k: response.json()[k] for k in fields_to_keep}
     except requests.RequestException as e:
         print(f"Error fetching Pokémon {pokemon_id}: {e}")
         return {}  # Return an empty dict on error
@@ -72,7 +75,7 @@ def summarize_pokemon_stats(all_stats: np.ndarray) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    pipeline = Pipeline([summarize_pokemon_stats, extract_basic_stats, fetch_pokemon_data], profile=True)
-    results = pipeline.map({"pokemon_id": list(range(1,1000))})
+    pipeline = Pipeline([summarize_pokemon_stats, extract_basic_stats, fetch_pokemon_data], profile=True, debug=True)
+    results = pipeline.map({"pokemon_id": list(range(1,50))})
 
     print(results)
