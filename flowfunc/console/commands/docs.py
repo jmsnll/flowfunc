@@ -1,12 +1,9 @@
-# flowfunc/console/commands/docs.py
-
-import sys  # For sys.exit on error
+import sys
 from pathlib import Path
 
 import click
-from rich.panel import Panel  # For displaying errors nicely
+from rich.panel import Panel
 
-# Import your rich console instance
 from flowfunc.console import console
 from flowfunc.pipeline.builder import PipelineBuilder
 from flowfunc.pipeline.builder import PipelineBuildError
@@ -32,13 +29,8 @@ def docs(workflow_path: Path, verbose: bool) -> None:
     This involves parsing the workflow and constructing the pipeline to access
     its documentation string.
     """
-    # The verbose flag here might be used to set a global logging level
-    # or pass to a ConsoleReporter if more detailed output during loading/building is needed.
-    # For now, its direct effect in this command is minimal, assuming print_documentation()
-    # and loggers handle verbosity.
-
     definition_loader = WorkflowDefinitionLoader()
-    pipeline_builder = PipelineBuilder()  # Uses default resolvers
+    pipeline_builder = PipelineBuilder()
 
     try:
         console.print(
@@ -47,14 +39,11 @@ def docs(workflow_path: Path, verbose: bool) -> None:
         workflow_model = definition_loader.from_path(workflow_path.absolute())
 
         if verbose:
-            # Optionally, print more details about the loaded model if verbose
-            # For example:
-            # console.print("\n[bold green]Workflow Model Snippet:[/bold green]")
-            # console.print(workflow_model.model_dump(mode='json', indent=2, exclude_none=True))
-            pass  # Add more verbose output if needed
+            console.print("\n[bold green]Workflow Model Snippet:[/bold green]")
+            console.print(workflow_model.model_dump(mode='json', exclude_none=True))
 
         console.print(
-            f"Building pipeline for: [cyan]{workflow_model.spec.metadata.name}[/cyan]"
+            f"Building pipeline for: [cyan]{workflow_model.metadata.name}[/cyan]"
         )
         workflow_pipeline = pipeline_builder.build(workflow_model)
 
@@ -74,7 +63,6 @@ def docs(workflow_path: Path, verbose: bool) -> None:
         )
         sys.exit(1)  # Use sys.exit for non-zero exit code
     except Exception as e:
-        # Catch any other unexpected errors
         console.print(
             Panel(
                 f"[bold red]An unexpected error occurred:[/] {e}",
@@ -82,6 +70,4 @@ def docs(workflow_path: Path, verbose: bool) -> None:
                 expand=False,
             )
         )
-        # For debugging, you might want to re-raise or log the full traceback
-        # logger.exception("Unexpected error in docs command")
         sys.exit(1)

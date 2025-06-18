@@ -1,5 +1,3 @@
-# flowfunc/config/__init__.py
-
 """
 FlowFunc Configuration Loading Utilities.
 

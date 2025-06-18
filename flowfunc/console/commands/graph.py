@@ -1,19 +1,15 @@
-# flowfunc/console/commands/graph.py
-
-import sys  # For sys.exit
+import sys
 from pathlib import Path
 
 import click
-from rich.panel import Panel  # For displaying errors nicely
+from rich.panel import Panel
 
-from flowfunc.console import console  # Your global RichConsole instance
+from flowfunc.console import console
 
-# Import ConsoleReporter and your rich console instance
 from flowfunc.console.reporter import ConsoleReporter
 from flowfunc.pipeline.builder import PipelineBuilder
 from flowfunc.pipeline.builder import PipelineBuildError
 
-# Import the refactored classes
 from flowfunc.workflow_definition.loader import WorkflowDefinitionLoader
 from flowfunc.workflow_definition.loader import WorkflowDefinitionLoaderError
 
@@ -23,9 +19,8 @@ from flowfunc.workflow_definition.loader import WorkflowDefinitionLoaderError
     "workflow_path",
     type=click.Path(
         exists=True, dir_okay=False, path_type=Path
-    ),  # Changed type hint to Path
+    ),
 )
-# Add a verbose option for consistency, even if not heavily used by this command's core graphing logic
 @click.option(
     "-v",
     "--verbose",
@@ -39,22 +34,21 @@ def graph(workflow_path: Path, verbose: bool) -> None:
     """
     reporter = ConsoleReporter(rich_console=console, verbose=verbose)
     definition_loader = WorkflowDefinitionLoader()
-    pipeline_builder = PipelineBuilder()  # Uses default resolvers
+    pipeline_builder = PipelineBuilder()
 
     try:
-        workflow_model = None  # Initialize for broader scope in case of early failure
+        workflow_model = None
         with reporter.status("[cyan]Loading workflow definition...[/cyan]"):
-            # Ensure absolute path is used if that was the intention
             abs_workflow_path = workflow_path.absolute()
             workflow_model = definition_loader.from_path(abs_workflow_path)
 
         if verbose and workflow_model:
             reporter.log_info(
-                f"Workflow '{workflow_model.spec.metadata.name}' loaded successfully."
+                f"Workflow '{workflow_model.metadata.name}' loaded successfully."
             )
 
         with reporter.status(
-            f"[cyan]Building pipeline for '{workflow_model.spec.metadata.name}'...[/cyan]"
+            f"[cyan]Building pipeline for '{workflow_model.metadata.name}'...[/cyan]"
         ):
             workflow_pipeline = pipeline_builder.build(workflow_model)
 
@@ -98,8 +92,6 @@ def graph(workflow_path: Path, verbose: bool) -> None:
             )
         sys.exit(1)
     except Exception as e:
-        # Catch any other unexpected errors, including potential errors from visualize_matplotlib()
-        # like "TclError: no display name and no $DISPLAY environment variable" if not in GUI env
         console.print(
             Panel(
                 f"[bold red]An unexpected error occurred during graphing:[/] {e}",
@@ -107,7 +99,4 @@ def graph(workflow_path: Path, verbose: bool) -> None:
                 expand=False,
             )
         )
-        # For debugging, you might want to re-raise or log the full traceback
-        # import logging
-        # logging.getLogger(__name__).exception("Unexpected error in graph command")
         sys.exit(1)
