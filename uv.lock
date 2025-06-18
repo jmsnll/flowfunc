@@ -2,13 +2,6 @@ version = 1
 revision = 2
 requires-python = ">=3.13"
 
-[manifest]
-members = [
-    "flowfunc",
-    "image-processing",
-    "nl-text-summarization",
-]
-
 [[package]]
 name = "adaptive"
 version = "1.4.1"
@@ -418,6 +411,12 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
+docs = [
+    { name = "nltk" },
+    { name = "numpy" },
+    { name = "pipefunc", extra = ["all"] },
+    { name = "scikit-image" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -437,6 +436,12 @@ dev = [
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "ruff", specifier = ">=0.11.11" },
+]
+docs = [
+    { name = "nltk", specifier = ">=3.9.1" },
+    { name = "numpy", specifier = ">=2.2.6" },
+    { name = "pipefunc", extras = ["all"], specifier = ">=0.77.0" },
+    { name = "scikit-image", specifier = ">=0.25.2" },
 ]
 
 [[package]]
@@ -536,27 +541,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f1/70/7703c29685631f5a7590aa73f1f1d3fa9a380e654b86af429e0934a32f7d/idna-3.10.tar.gz", hash = "sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9", size = 190490, upload-time = "2024-09-15T18:07:39.745Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/76/c6/c88e154df9c4e1a2a66ccf0005a88dfb2650c1dffb6f5ce603dfbd452ce3/idna-3.10-py3-none-any.whl", hash = "sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3", size = 70442, upload-time = "2024-09-15T18:07:37.964Z" },
-]
-
-[[package]]
-name = "image-processing"
-version = "0.1.0"
-source = { virtual = "examples/image_processing" }
-
-[package.dev-dependencies]
-example = [
-    { name = "numpy" },
-    { name = "pipefunc", extra = ["all"] },
-    { name = "scikit-image" },
-]
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-example = [
-    { name = "numpy", specifier = ">=2.2.6" },
-    { name = "pipefunc", extras = ["all"], specifier = ">=0.76.0" },
-    { name = "scikit-image", specifier = ">=0.25.2" },
 ]
 
 [[package]]
@@ -999,27 +983,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/fd/1d/06475e1cd5264c0b870ea2cc6fdb3e37177c1e565c43f56ff17a10e3937f/networkx-3.4.2.tar.gz", hash = "sha256:307c3669428c5362aab27c8a1260aa8f47c4e91d3891f48be0141738d8d053e1", size = 2151368, upload-time = "2024-10-21T12:39:38.695Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b9/54/dd730b32ea14ea797530a4479b2ed46a6fb250f682a9cfb997e968bf0261/networkx-3.4.2-py3-none-any.whl", hash = "sha256:df5d4365b724cf81b8c6a7312509d0c22386097011ad1abe274afd5e9d3bbc5f", size = 1723263, upload-time = "2024-10-21T12:39:36.247Z" },
-]
-
-[[package]]
-name = "nl-text-summarization"
-version = "0.1.0"
-source = { virtual = "examples/nlp_text_summarization" }
-
-[package.dev-dependencies]
-example = [
-    { name = "nltk" },
-    { name = "numpy" },
-    { name = "pipefunc", extra = ["all"] },
-]
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-example = [
-    { name = "nltk", specifier = "==3.9.1" },
-    { name = "numpy", specifier = ">=2.2.6" },
-    { name = "pipefunc", extras = ["all"], specifier = ">=0.76.0" },
 ]
 
 [[package]]
