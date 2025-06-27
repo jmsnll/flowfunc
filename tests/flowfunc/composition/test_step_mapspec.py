@@ -10,7 +10,7 @@ from flowfunc.workflow_definition import StepOptions
 
 class TestGetPipefuncMapspec:
     @pytest.mark.parametrize(
-        "step_data, expected_spec",
+        ("step_data", "expected_spec"),
         [
             (
                 {"inputs": {"items": "$global.my_list"}, "outputs": "results"},
@@ -52,7 +52,7 @@ class TestGetPipefuncMapspec:
     )
     def test_mapspec_broadcast_mode(
         self, step_data: dict[str, Any], expected_spec: str
-    ):
+    ) -> None:
         """Tests various scenarios for 'broadcast' map_mode."""
         step = StepDefinition(name="test_step", **step_data)
         options = StepOptions(output_name=step.outputs)
@@ -61,7 +61,7 @@ class TestGetPipefuncMapspec:
         assert options_with_mapsec.mapspec == expected_spec
 
     @pytest.mark.parametrize(
-        "step_data, expected_spec",
+        ("step_data", "expected_spec"),
         [
             (
                 {
@@ -93,7 +93,9 @@ class TestGetPipefuncMapspec:
             "zip_three_iterables_with_constant",
         ],
     )
-    def test_mapspec_zip_mode(self, step_data: dict[str, Any], expected_spec: str):
+    def test_mapspec_zip_mode(
+        self, step_data: dict[str, Any], expected_spec: str
+    ) -> None:
         """Tests various scenarios for 'zip' map_mode."""
         step = StepDefinition(name="test_step", **step_data)
         options = StepOptions(output_name=step.outputs)
@@ -102,7 +104,7 @@ class TestGetPipefuncMapspec:
         assert options_with_mapsec.mapspec == expected_spec
 
     @pytest.mark.parametrize(
-        "step_data, expected_spec",
+        ("step_data", "expected_spec"),
         [
             (
                 {
@@ -128,7 +130,7 @@ class TestGetPipefuncMapspec:
     )
     def test_mapspec_aggregate_mode(
         self, step_data: dict[str, Any], expected_spec: str
-    ):
+    ) -> None:
         """Tests various scenarios for 'aggregate' map_mode."""
         step = StepDefinition(name="test_step", **step_data)
         options = StepOptions(output_name=step.outputs)
@@ -153,7 +155,7 @@ class TestGetPipefuncMapspec:
             "return_none_if_outputs_is_missing",
         ],
     )
-    def test_mapspec_should_return_none(self, step_data: dict[str, Any]):
+    def test_mapspec_should_return_none(self, step_data: dict[str, Any]) -> None:
         """Tests scenarios where mapspec generation should be skipped."""
         step = StepDefinition(name="test_step", **step_data)
         options = StepOptions(**(step_data.get("options", {})))
@@ -164,7 +166,7 @@ class TestGetPipefuncMapspec:
         else:
             assert options_with_mapsec.mapspec is None
 
-    def test_mapspec_raises_error_on_too_many_broadcast_inputs(self):
+    def test_mapspec_raises_error_on_too_many_broadcast_inputs(self) -> None:
         """Tests that an error is raised when too many iterables are used in broadcast mode."""
         too_many_inputs = {f"in_{i}": f"$global.list_{i}" for i in range(30)}
         step_data = {

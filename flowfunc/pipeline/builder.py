@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 import pipefunc
 
@@ -8,7 +9,9 @@ from flowfunc.composition import pipeline as pipeline_resolvers
 from flowfunc.composition import step as step_resolvers
 from flowfunc.composition.chain import Chain
 from flowfunc.exceptions import PipelineBuildError
-from flowfunc.workflow_definition.schema import WorkflowDefinition
+
+if TYPE_CHECKING:
+    from flowfunc.workflow_definition.schema import WorkflowDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +22,7 @@ class PipelineBuilder:
     chains of pure, stateless resolver functions from the `composition` package.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initializes the builder by creating reusable chains of resolver functions."""
         self._step_builder_chain = Chain(step_resolvers.ALL)
         self._pipeline_builder_chain = Chain(pipeline_resolvers.ALL)
@@ -60,7 +63,7 @@ class PipelineBuilder:
                 funcs.append(pipefunc.PipeFunc(**pipe_func_kwargs))
 
             except PipelineBuildError as e:
-                logger.error(f"Failed to build step '{step_model.name}': {e}")
+                logger.exception(f"Failed to build step '{step_model.name}': {e}")
                 raise
             except Exception as e:
                 logger.error(

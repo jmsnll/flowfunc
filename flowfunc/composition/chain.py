@@ -5,11 +5,9 @@ from typing import Any
 
 
 class Chain:
-    """
-    A simple helper to chain a series of functions, where the output of one is the input of the next.
-    """
+    """A simple helper to chain a series of functions, where the output of one is the input of the next."""
 
-    def __init__(self, funcs: Iterable[Callable]):
+    def __init__(self, funcs: Iterable[Callable]) -> None:
         self._funcs = funcs
 
     def __call__(self, initial_value: Any, *args, **kwargs) -> Any:

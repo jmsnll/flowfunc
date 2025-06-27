@@ -71,7 +71,7 @@ def validate_step_inputs(
     unknown_args = provided_args - func_params
     if unknown_args:
         raise PipelineBuildError(
-            f"Step '{step.name}': Unknown arguments: {sorted(list(unknown_args))}. Valid: {sorted(list(func_params))}."
+            f"Step '{step.name}': Unknown arguments: {sorted(unknown_args)}. Valid: {sorted(func_params)}."
         )
 
     missing_args = {
@@ -83,16 +83,14 @@ def validate_step_inputs(
     }
     if missing_args:
         raise PipelineBuildError(
-            f"Step '{step.name}': Missing required arguments: {sorted(list(missing_args))}."
+            f"Step '{step.name}': Missing required arguments: {sorted(missing_args)}."
         )
 
     return options
 
 
 def resolve_renames(options: StepOptions, step: StepDefinition, **_) -> StepOptions:
-    """
-    Resolves input renames for '$global' references using an explicit, readable loop.
-    """
+    """Resolves input renames for '$global' references using an explicit, readable loop."""
     if not step.inputs:
         return options
 
@@ -163,7 +161,6 @@ def resolve_mapspec(options: StepOptions, step: StepDefinition, **_) -> StepOpti
         )
         return options
 
-    map_mode = step.options.map_mode if step.options else MapMode.BROADCAST
 
     iterable_inputs = {}
     constant_inputs = []

@@ -3,9 +3,8 @@ import logging
 from datetime import UTC
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 from typing import Any
-
-from pipefunc import Pipeline
 
 from flowfunc.console.reporter import ConsoleReporter
 from flowfunc.exceptions import WorkflowRunError
@@ -28,6 +27,9 @@ from flowfunc.run.summary_persister import SummaryPersistenceError
 from flowfunc.run.summary_persister import SummaryPersister
 from flowfunc.workflow_definition.loader import WorkflowDefinitionLoader
 from flowfunc.workflow_definition.loader import WorkflowDefinitionLoaderError
+
+if TYPE_CHECKING:
+    from pipefunc import Pipeline
 
 logger = logging.getLogger(__name__)
 

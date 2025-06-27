@@ -5,9 +5,7 @@ import requests
 
 
 def fetch_pokemon_data(pokemon_id: int) -> dict[str, Any]:
-    """
-    Fetches data for a single Pokémon from the PokéAPI.
-    """
+    """Fetches data for a single Pokémon from the PokéAPI."""
     url = f"https://pokeapi.co/api/v2/pokemon/{pokemon_id}"
     print(f"Fetching data for Pokémon ID: {pokemon_id}")
 
@@ -29,9 +27,7 @@ def fetch_pokemon_data(pokemon_id: int) -> dict[str, Any]:
 
 
 def extract_basic_stats(pokemon_data: dict[str, Any]) -> dict[str, Any]:
-    """
-    Extracts a few key pieces of information from the raw Pokémon data.
-    """
+    """Extracts a few key pieces of information from the raw Pokémon data."""
     if not pokemon_data:
         return {}  # Skip if data is empty from a failed fetch
 
@@ -53,9 +49,7 @@ def extract_basic_stats(pokemon_data: dict[str, Any]) -> dict[str, Any]:
 
 
 def summarize_pokemon_stats(all_stats: np.ndarray) -> dict[str, Any]:
-    """
-    Aggregates all the extracted stats into a final summary.
-    """
+    """Aggregates all the extracted stats into a final summary."""
     print("Aggregating all Pokémon stats...")
 
     # Filter out any empty results from failed API calls
