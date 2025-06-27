@@ -113,9 +113,9 @@ class MapMode(str, Enum):
 class StepOptions(BaseModel):
     func: Callable | None = None
     output_name: str | list[str] | None = None
-    renames: dict[str, str] | None = None
-    defaults: dict[str, Any] | None = None
-    bound: dict[str, Any] | None = None
+    renames: dict[str, str] | None = Field(default_factory=dict)
+    defaults: dict[str, Any] | None = Field(default_factory=dict)
+    bound: dict[str, Any] | None = Field(default_factory=dict)
     profile: bool | None = None
     debug: bool | None = None
     cache: bool | None = None
