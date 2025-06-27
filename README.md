@@ -1,3 +1,9 @@
+# ⚠️ Alpha Notice
+
+**This project is in early alpha. APIs, features, and instructions are subject to change. Documentation may be outdated. Use with caution.**
+
+---
+
 # flowfunc
 
 [![PyPI version](https://badge.fury.io/py/flowfunc.svg)](https://badge.fury.io/py/flowfunc)
