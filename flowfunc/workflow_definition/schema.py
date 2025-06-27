@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import string
 from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
@@ -106,6 +107,12 @@ class InputItem(BaseModel):
         return self.value
 
 
+class MapMode(str, Enum):
+    BROADCAST = "broadcast"
+    ZIP = "zip"
+    AGGREGATE = "aggregate"
+
+
 class StepOptions(BaseModel):
     func: Callable | None = None
     output_name: str | list[str] | None = None
@@ -118,6 +125,7 @@ class StepOptions(BaseModel):
     mapspec: str | None = None
     scope: str | None = None
     advanced_options: dict[str, Any] | None = None
+    map_mode: MapMode | None = MapMode.BROADCAST
 
     model_config = {"extra": "forbid"}
 
@@ -126,7 +134,9 @@ class StepDefinition(BaseModel):
     name: str
     func: str | None = None
     description: str | None = None
-    inputs: dict[str, InputItem | str] | None = Field(default_factory=dict)
+    inputs: dict[str, InputItem | str | int | float] | None = Field(
+        default_factory=dict
+    )
     parameters: dict[str, Any] | None = Field(default_factory=dict)
     output_name: str | None = None
     resources: Resources | None = None
@@ -187,6 +197,116 @@ class StepDefinition(BaseModel):
     def _get_pipefunc_defaults(self) -> dict[str, Any]:
         return self.parameters.copy() if self.parameters else {}
 
+    def _get_pipefunc_mapspec(self) -> str | None:
+        """
+        Generates a `mapspec` string based on step inputs, outputs, and a `map_mode`.
+
+        This function makes it easier to handle common mapping patterns (broadcasting,
+        zipping, aggregation) without writing a full `mapspec` string manually.
+        The generation is controlled by `options.map_mode`.
+
+        The function will NOT generate a `mapspec` if:
+        - One is already defined in `options.mapspec`.
+        - No iterable inputs are found.
+        - The step has no `output_name` defined.
+
+        The `map_mode` option in the step's `options` block dictates the pattern:
+        - `broadcast` (Default): Creates a cartesian product of all iterable inputs.
+          Each iterable gets a unique index (`i`, `j`, ...).
+          e.g., `inputs: {a: "$global.x", b: "$global.y"}` -> `x[i], y[j] -> out[i,j]`
+
+        - `zip`: Iterates over all iterable inputs in parallel. All iterables
+          share the same index (`i`). This is for 1-to-1 processing of multiple lists.
+          e.g., `inputs: {a: "$global.x", b: "$global.y"}` -> `x[i], y[i] -> out[i]`
+
+        - `aggregate`: Consumes an iterable input to produce a single, aggregated output.
+          The input has an index, but the output does not.
+          e.g., `inputs: {a: "step.results"}` -> `results[i] -> summary`
+
+        Iterable vs. Constant Inputs:
+        - An input is "iterable" if its value is a string reference like `"$global.my_list"`
+          or `"previous_step.output_list"`.
+        - An input is "constant" if its value is a literal (e.g., `10`, `"foo"`, `true`).
+          Constants are passed as-is to every function call.
+        """
+        if self.options and self.options.mapspec:
+            return self.options.mapspec
+
+        if not self.inputs or not self.output_name:
+            return None
+
+        map_mode = self.options.map_mode if self.options else MapMode.BROADCAST
+
+        iterable_inputs = {}
+        constant_inputs = []
+        for input_name, input_value in self.inputs.items():
+            if isinstance(input_value, str) and (
+                input_value.startswith("$global.") or "." in input_value
+            ):
+                source_name = input_value.split(".", 1)[1]
+                iterable_inputs[input_name] = source_name
+            else:
+                constant_inputs.append(input_name)
+
+        if not iterable_inputs:
+            return None
+
+        indices = list(string.ascii_lowercase[8:])
+        input_parts = []
+        output_names = (
+            [self.output_name]
+            if isinstance(self.output_name, str)
+            else self.output_name
+        )
+
+        match map_mode:
+            case MapMode.BROADCAST:
+                output_indices = []
+                for i, source_name in enumerate(iterable_inputs.values()):
+                    if i >= len(indices):
+                        raise PipelineBuildError(
+                            "Too many iterable inputs for `broadcast`."
+                        )
+                    index = indices[i]
+                    input_parts.append(f"{source_name}[{index}]")
+                    output_indices.append(index)
+
+                output_index_str = ",".join(output_indices)
+                output_parts = [f"{name}[{output_index_str}]" for name in output_names]
+                outputs_str = ", ".join(output_parts)
+
+            case MapMode.ZIP:
+                index = indices[0]
+                for source_name in iterable_inputs.values():
+                    input_parts.append(f"{source_name}[{index}]")
+
+                output_parts = [f"{name}[{index}]" for name in output_names]
+                outputs_str = ", ".join(output_parts)
+
+            case MapMode.AGGREGATE:
+                index = indices[0]
+                for source_name in iterable_inputs.values():
+                    input_parts.append(f"{source_name}[{index}]")
+
+                # For aggregation, the output has no indices
+                outputs_str = ", ".join(output_names)
+
+            case _:
+                raise ValueError(
+                    f"Unhandled MapMode: {map_mode}. This should not happen."
+                )
+
+        input_parts.extend(constant_inputs)
+        inputs_str = ", ".join(input_parts)
+        mapspec_string = f"{inputs_str} -> {outputs_str}"
+
+        logger.info(
+            f"Step '{self.name}': Automatically generated mapspec "
+            f"using mode '{map_mode.value}': '{mapspec_string}'"
+        )
+
+        return mapspec_string
+
     def _get_pipefunc_resources(
         self, global_resources: Resources | None
     ) -> dict[str, Any]:
@@ -216,7 +336,9 @@ class StepDefinition(BaseModel):
     ) -> dict[str, Any]:
         """Generates the keyword arguments dictionary for instantiating a pipefunc.PipeFunc."""
         pf_options: dict[str, Any] = (
-            self.options.model_dump(exclude_none=True, by_alias=True)
+            self.options.model_dump(
+                exclude_none=True, by_alias=True, exclude={"map_mode"}
+            )
             if self.options
             else {}
         )
@@ -239,6 +361,10 @@ class StepDefinition(BaseModel):
         defaults = self._get_pipefunc_defaults()
         if defaults:
             pf_options["defaults"] = {**pf_options.get("defaults", {}), **defaults}
+
+        mapspec = self._get_pipefunc_mapspec()
+        if mapspec:
+            pf_options["mapspec"] = mapspec
 
         resources = self._get_pipefunc_resources(workflow_global_resources)
         if resources:
