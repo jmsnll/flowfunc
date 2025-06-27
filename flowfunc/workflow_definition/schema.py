@@ -13,7 +13,6 @@ from pydantic import field_validator
 from pydantic import model_validator
 from pydantic.main import IncEx
 
-
 logger = logging.getLogger(__name__)
 
 
