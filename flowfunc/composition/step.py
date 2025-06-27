@@ -155,6 +155,10 @@ def resolve_mapspec(options: StepOptions, step: StepDefinition, **_) -> StepOpti
         )
         return options
 
+    if (map_mode := step.options.map_mode) == MapMode.NONE:
+        return options
+
+
     if not step.inputs or not options.output_name:
         logger.debug(
             f"No mapspec generated, no inputs or outputs defined for step '{step.name}'"

@@ -1,4 +1,3 @@
-# workflows/poke_analysis.yaml
 apiVersion: flowfunc.dev/v1beta1
 kind: Pipeline
 metadata:
@@ -24,14 +23,16 @@ spec:
     - name: "extract_basic_stats"
       description: "Extracts key stats from the raw data for each Pokémon."
       inputs:
-        pokemon_data: "raw_data" # Uses the output from the previous step
+        pokemon_data: "fetch_pokemon_data.pokemon_data" # Uses the output from the previous step
       outputs: "all_stats"
 
     - name: "summarize_pokemon_stats"
       description: "Aggregates the individual stats into a single summary."
       inputs:
-        all_stats: all_stats
+        all_stats: "extract_basic_stats.all_stats"
       outputs: "final_summary"
+      options:
+        map_mode: "none"
       # No mapspec here as this function aggregates the list of stats.
 
   outputs:

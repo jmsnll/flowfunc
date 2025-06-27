@@ -104,6 +104,7 @@ class InputItem(BaseModel):
 
 
 class MapMode(str, Enum):
+    NONE = "none"
     BROADCAST = "broadcast"
     ZIP = "zip"
     AGGREGATE = "aggregate"
