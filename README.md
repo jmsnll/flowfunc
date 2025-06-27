@@ -7,7 +7,7 @@
 # flowfunc
 
 [![PyPI version](https://badge.fury.io/py/flowfunc.svg)](https://badge.fury.io/py/flowfunc)
-[![CI](https://github.com/your-username/flowfunc/actions/workflows/ci.yaml/badge.svg)](https://github.com/your-username/flowfunc/actions/workflows/ci.yaml)
+[![CI](https://github.com/jmsnll/flowfunc/actions/workflows/ci.yaml/badge.svg)](https://github.com/jmsnll/flowfunc/actions/workflows/ci.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **flowfunc: The Dead Simple, Local-First Workflow Runner for Python.**
