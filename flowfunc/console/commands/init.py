@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import click
 from rich.panel import Panel
 from rich.text import Text
-from pathlib import Path
 
 from flowfunc.console import console
 
@@ -63,13 +64,19 @@ spec:
     name="init",
     help="Initializes a new FlowFunc project with a conventional layout and example workflow.",
 )
-@click.argument("directory", type=click.Path(file_okay=False, dir_okay=True, writable=True, resolve_path=True), default=".")
+@click.argument(
+    "directory",
+    type=click.Path(file_okay=False, dir_okay=True, writable=True, resolve_path=True),
+    default=".",
+)
 def init(directory: str) -> None:
     """Initializes a FlowFunc project by creating a conventional directory
     structure and a runnable example workflow.
     """
     project_dir = Path(directory)
-    console.log(f"[bold green]Initializing FlowFunc project in [cyan]{project_dir}[/cyan]...[/bold green]")
+    console.log(
+        f"[bold green]Initializing FlowFunc project in [cyan]{project_dir}[/cyan]...[/bold green]"
+    )
 
     if directory != ".":
         project_dir.mkdir(parents=True, exist_ok=True)
@@ -89,17 +96,23 @@ def init(directory: str) -> None:
 
     if not source_file.exists():
         source_file.write_text(MAIN_PY_TEMPLATE)
-        console.log(f"  - Created: [magenta]{source_file.relative_to(project_dir)}[/magenta]")
+        console.log(
+            f"  - Created: [magenta]{source_file.relative_to(project_dir)}[/magenta]"
+        )
     else:
-        console.log(f"  - Skipped: [yellow]{source_file.relative_to(project_dir)} already exists.[/yellow]")
-
+        console.log(
+            f"  - Skipped: [yellow]{source_file.relative_to(project_dir)} already exists.[/yellow]"
+        )
 
     if not workflow_file.exists():
         workflow_file.write_text(WORKFLOW_YAML_TEMPLATE)
-        console.log(f"  - Created: [magenta]{workflow_file.relative_to(project_dir)}[/magenta]")
+        console.log(
+            f"  - Created: [magenta]{workflow_file.relative_to(project_dir)}[/magenta]"
+        )
     else:
-        console.log(f"  - Skipped: [yellow]{workflow_file.relative_to(project_dir)} already exists.[/yellow]")
-
+        console.log(
+            f"  - Skipped: [yellow]{workflow_file.relative_to(project_dir)} already exists.[/yellow]"
+        )
 
     run_command = f"flowfunc run {workflow_file.relative_to(project_dir)}"
     final_message = (
