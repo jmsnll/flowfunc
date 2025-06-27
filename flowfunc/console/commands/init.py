@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import click
 from rich.panel import Panel
 from rich.text import Text
-from pathlib import Path
 
 from flowfunc.console import console
 
