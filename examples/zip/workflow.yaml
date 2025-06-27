@@ -1,0 +1,37 @@
+# zip_character_example/workflow.yaml
+apiVersion: flowfunc.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: character-roster-builder
+spec:
+  # Tell flowfunc where to find our function
+  default_module: examples.zip.character_builder
+
+  # Define the four parallel lists of initial data
+  inputs:
+    character_names:
+      value: ["Astra", "Gideon", "Seraphina", "Kael"]
+    character_archetypes:
+      value: ["Mage", "Warrior", "Healer", "Rogue"]
+    power_levels:
+      value: [85, 92, 78, 95]
+    creation_years:
+      value: [2021, 2019, 2022, 2020]
+
+  steps:
+    - name: "create_character_profile"
+      description: "Builds a structured profile for each character by zipping four lists."
+      options:
+        # 'zip' mode processes all four input lists in parallel, 1-to-1.
+        map_mode: zip
+      inputs:
+        # Map the function's four arguments to our four global inputs.
+        name: "$global.character_names"
+        archetype: "$global.character_archetypes"
+        power_level: "$global.power_levels"
+        design_year: "$global.creation_years"
+      outputs: "character_roster"
+
+  # Define what to do with the final list of character profiles
+  outputs:
+    character_roster: "final_roster.json"
