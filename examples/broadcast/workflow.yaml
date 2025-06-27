@@ -1,0 +1,31 @@
+# sre_broadcast_example/workflow.yaml
+apiVersion: flowfunc.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: multi-target-health-check
+spec:
+  # Tell flowfunc where to find our function
+  default_module: examples.broadcast.health_checker
+
+  # Define the two lists that form our target matrix
+  inputs:
+    environments:
+      value: ["playground", "staging", "production"]
+    regions:
+      value: ["us-east-1", "eu-west-1", "ap-southeast-2"]
+
+  steps:
+    - name: "check_service_health"
+      description: "Checks service health across all environments and regions."
+      options:
+        # 'broadcast' mode creates the full 3x3 matrix of targets.
+        map_mode: broadcast
+      inputs:
+        # Map the function's arguments to our global inputs.
+        environment: "$global.environments"
+        region: "$global.regions"
+      outputs: "health_status_grid"
+
+  # Define what to do with the final grid of health statuses
+  outputs:
+    health_status_grid: "health_check_summary.json"

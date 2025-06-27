@@ -19,23 +19,19 @@ spec:
       description: "Fetches raw data for each Pokémon ID in parallel."
       inputs:
         pokemon_id: "$global.pokemon_ids"
-      output_name: "pokemon_data"
-      options:
-        mapspec: "pokemon_ids[n] -> pokemon_data[n]"
+      outputs: "pokemon_data"
 
     - name: "extract_basic_stats"
       description: "Extracts key stats from the raw data for each Pokémon."
-#      inputs:
-#        pokemon_data: "raw_data" # Uses the output from the previous step
-      output_name: "all_stats"
-      options:
-        mapspec: "pokemon_data[n] -> all_stats[n]"
+      inputs:
+        pokemon_data: "raw_data" # Uses the output from the previous step
+      outputs: "all_stats"
 
     - name: "summarize_pokemon_stats"
       description: "Aggregates the individual stats into a single summary."
       inputs:
         all_stats: all_stats
-      output_name: "final_summary"
+      outputs: "final_summary"
       # No mapspec here as this function aggregates the list of stats.
 
   outputs:

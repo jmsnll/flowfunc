@@ -37,22 +37,27 @@ class PipelineBuilder:
             try:
                 # Start with a clean slate: the raw options from the step definition
                 initial_options = (
-                    step_model.options.model_dump(exclude_none=True, by_alias=True)
+                    step_model.options.model_dump(
+                        exclude_none=True, exclude_unset=True, by_alias=True
+                    )
                     if step_model.options
                     else {}
                 )
 
                 # Execute the chain of step resolvers to compose the final options
-                pipe_func_options = self._step_builder_chain(
+                final_options = self._step_builder_chain(
                     initial_options,
                     step=step_model,
                     workflow=workflow_model,
                 )
 
-                logger.debug(
-                    f"Instantiating PipeFunc for step '{step_model.name}' with resolved options: {pipe_func_options}"
+                pipe_func_kwargs = final_options.model_dump(
+                    exclude_unset=True, exclude_none=True
                 )
-                funcs.append(pipefunc.PipeFunc(**pipe_func_options))
+                logger.debug(
+                    f"Instantiating PipeFunc for step '{step_model.name}' with resolved options: {pipe_func_kwargs}"
+                )
+                funcs.append(pipefunc.PipeFunc(**pipe_func_kwargs))
 
             except PipelineBuildError as e:
                 logger.error(f"Failed to build step '{step_model.name}': {e}")

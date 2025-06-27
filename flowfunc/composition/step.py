@@ -1,10 +1,12 @@
 import inspect
 import logging
+import string
 from typing import Any
 
 from flowfunc.exceptions import PipelineBuildError
 from flowfunc.utils.python import import_callable
 from flowfunc.workflow_definition import StepOptions
+from flowfunc.workflow_definition.schema import MapMode
 from flowfunc.workflow_definition.schema import StepDefinition
 from flowfunc.workflow_definition.schema import WorkflowDefinition
 
@@ -142,9 +144,108 @@ def resolve_scope(options: StepOptions, step: StepDefinition, **_) -> StepOption
     return options
 
 
-# The final, ordered chain using the new strongly-typed model.
+def resolve_mapspec(options: StepOptions, step: StepDefinition, **_) -> StepOptions:
+    """
+    Generates and adds a `mapspec` string to the options based on step inputs and map_mode.
+
+    This resolver makes it easier to handle common mapping patterns (broadcasting,
+    zipping, aggregation) without writing a full `mapspec` string manually.
+    """
+    if options.mapspec:
+        logger.debug(
+            f"Adding mapspec from existing options for step '{step.name}': '{options.mapspec}'"
+        )
+        return options
+
+    if not step.inputs or not options.output_name:
+        logger.debug(
+            f"No mapspec generated, no inputs or outputs defined for step '{step.name}'"
+        )
+        return options
+
+    map_mode = step.options.map_mode if step.options else MapMode.BROADCAST
+
+    iterable_inputs = {}
+    constant_inputs = []
+    for input_name, input_item in step.inputs.items():
+        input_value = input_item.value if hasattr(input_item, "value") else input_item
+
+        if isinstance(input_value, str) and (
+            input_value.startswith("$global.") or "." in input_value
+        ):
+            source_name = input_value.split(".", 1)[1]
+            iterable_inputs[input_name] = source_name
+        else:
+            constant_inputs.append(input_name)
+
+    if not iterable_inputs:
+        logger.debug(
+            f"No mapspec generated, no iterable inputs detected for step '{step.name}'"
+        )
+        return options
+
+    indices = list(string.ascii_lowercase[8:])  # i, j, k, ...
+    input_parts = []
+    output_names = (
+        [options.output_name]
+        if isinstance(options.output_name, str)
+        else options.output_name
+    )
+
+    match map_mode:
+        case MapMode.BROADCAST:
+            output_indices = []
+            for i, source_name in enumerate(iterable_inputs.values()):
+                if i >= len(indices):
+                    raise PipelineBuildError(
+                        f"Step '{step.name}': Too many iterable inputs for 'broadcast' mode (max {len(indices)})."
+                    )
+                index = indices[i]
+                input_parts.append(f"{source_name}[{index}]")
+                output_indices.append(index)
+
+            output_index_str = ",".join(output_indices)
+            output_parts = [f"{name}[{output_index_str}]" for name in output_names]
+            outputs_str = ", ".join(output_parts)
+
+        case MapMode.ZIP:
+            if len(iterable_inputs) > 1:
+                logger.warning(
+                    f"Step '{step.name}': 'zip' mode with multiple iterable inputs will map all to the same index 'i'."
+                )
+            index = indices[0]
+            for source_name in iterable_inputs.values():
+                input_parts.append(f"{source_name}[{index}]")
+            output_parts = [f"{name}[{index}]" for name in output_names]
+            outputs_str = ", ".join(output_parts)
+
+        case MapMode.AGGREGATE:
+            if len(iterable_inputs) > 1:
+                raise PipelineBuildError(
+                    f"Step '{step.name}': 'aggregate' mode only supports one iterable input."
+                )
+            index = indices[0]
+            for source_name in iterable_inputs.values():
+                input_parts.append(f"{source_name}[{index}]")
+            outputs_str = ", ".join(output_names)  # Aggregated output has no index
+
+        case _:
+            raise ValueError(f"Unhandled MapMode: {map_mode}. This should not happen.")
+
+    input_parts.extend(constant_inputs)
+    inputs_str = ", ".join(input_parts)
+    mapspec_string = f"{inputs_str} -> {outputs_str}"
+
+    logger.info(
+        f"Step '{step.name}': Automatically generated mapspec "
+        f"using mode '{map_mode.value}': '{mapspec_string}'"
+    )
+
+    return options.model_copy(update={"mapspec": mapspec_string})
+
+
 ALL = [
-    create_initial_options,  # First, convert the raw dict to our Pydantic model
+    create_initial_options,
     resolve_output_name,
     resolve_callable,
     validate_step_inputs,
@@ -152,4 +253,5 @@ ALL = [
     resolve_defaults,
     resolve_resources,
     resolve_scope,
+    resolve_mapspec,
 ]

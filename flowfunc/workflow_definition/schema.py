@@ -13,7 +13,6 @@ from pydantic import field_validator
 from pydantic import model_validator
 from pydantic.main import IncEx
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -104,18 +103,25 @@ class InputItem(BaseModel):
         return self.value
 
 
+class MapMode(str, Enum):
+    BROADCAST = "broadcast"
+    ZIP = "zip"
+    AGGREGATE = "aggregate"
+
+
 class StepOptions(BaseModel):
     func: Callable | None = None
     output_name: str | list[str] | None = None
-    renames: dict[str, str] | None = None
-    defaults: dict[str, Any] | None = None
-    bound: dict[str, Any] | None = None
+    renames: dict[str, str] | None = Field(default_factory=dict)
+    defaults: dict[str, Any] | None = Field(default_factory=dict)
+    bound: dict[str, Any] | None = Field(default_factory=dict)
     profile: bool | None = None
     debug: bool | None = None
     cache: bool | None = None
     mapspec: str | None = None
     scope: str | None = None
     advanced_options: dict[str, Any] | None = None
+    map_mode: MapMode | None = Field(default=MapMode.BROADCAST, exclude=True)
 
     model_config = {"extra": "forbid"}
 
@@ -124,9 +130,11 @@ class StepDefinition(BaseModel):
     name: str
     func: str | None = None
     description: str | None = None
-    inputs: dict[str, InputItem | str] | None = Field(default_factory=dict)
+    inputs: dict[str, InputItem | str | int | float] | None = Field(
+        default_factory=dict
+    )
     parameters: dict[str, Any] | None = Field(default_factory=dict)
-    output_name: str | None = None
+    outputs: str | list[str] | None = None
     resources: Resources | None = None
     options: StepOptions | None = Field(default_factory=StepOptions)
 

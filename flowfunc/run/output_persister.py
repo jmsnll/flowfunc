@@ -2,6 +2,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from flowfunc.exceptions import OutputPersisterError
 from flowfunc.exceptions import SerializerError as IOSerializerError
 from flowfunc.io.serializer import Serializer as IOSerializer
@@ -71,8 +73,9 @@ class OutputPersister:
                 )
                 continue
 
-            data_to_persist = results[actual_result_key].output
-
+            data_to_persist = self._prepare_data_for_serialization(
+                results[actual_result_key].output
+            )
             target_file_path: Path
             if defined_path_spec.is_absolute():
                 target_file_path = defined_path_spec
@@ -111,6 +114,30 @@ class OutputPersister:
                 )
 
         return persisted_outputs_manifest
+
+    def _prepare_data_for_serialization(self, data: Any) -> Any:
+        """
+        Recursively converts known non-standard types into serializable Python objects.
+        This is a universal cleanup step that runs for all data before serialization.
+        """
+        if isinstance(data, np.ndarray):
+            return data.tolist()
+        if isinstance(data, np.integer):
+            return int(data)
+        if isinstance(data, np.floating):
+            return float(data)
+        if isinstance(data, np.bool_):
+            return bool(data)
+
+        if isinstance(data, list):
+            return [self._prepare_data_for_serialization(item) for item in data]
+        if isinstance(data, dict):
+            return {
+                key: self._prepare_data_for_serialization(value)
+                for key, value in data.items()
+            }
+
+        return data
 
     def _serialize_output(
         self,
