@@ -125,7 +125,7 @@ class StepOptions(BaseModel):
     mapspec: str | None = None
     scope: str | None = None
     advanced_options: dict[str, Any] | None = None
-    map_mode: MapMode | None = MapMode.BROADCAST
+    map_mode: MapMode | None = Field(default=MapMode.BROADCAST, exclude=True)
 
     model_config = {"extra": "forbid"}
 
@@ -332,9 +332,7 @@ class StepDefinition(BaseModel):
     ) -> dict[str, Any]:
         """Generates the keyword arguments dictionary for instantiating a pipefunc.PipeFunc."""
         pf_options: dict[str, Any] = (
-            self.options.model_dump(
-                exclude_none=True, by_alias=True, exclude={"map_mode"}
-            )
+            self.options.model_dump(exclude_none=True, by_alias=True)
             if self.options
             else {}
         )
