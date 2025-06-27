@@ -20,16 +20,12 @@ spec:
       inputs:
         pokemon_id: "$global.pokemon_ids"
       outputs: "pokemon_data"
-      options:
-        mapspec: "pokemon_ids[n] -> pokemon_data[n]"
 
     - name: "extract_basic_stats"
       description: "Extracts key stats from the raw data for each Pokémon."
       inputs:
         pokemon_data: "raw_data" # Uses the output from the previous step
       outputs: "all_stats"
-      options:
-        mapspec: "pokemon_data[n] -> all_stats[n]"
 
     - name: "summarize_pokemon_stats"
       description: "Aggregates the individual stats into a single summary."
