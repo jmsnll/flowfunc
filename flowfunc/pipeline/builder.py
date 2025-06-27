@@ -51,10 +51,12 @@ class PipelineBuilder:
                     workflow=workflow_model,
                 )
 
-                logger.debug(
-                    f"Instantiating PipeFunc for step '{step_model.name}' with resolved options: {final_options}"
+                pipe_func_kwargs = final_options.model_dump(
+                    exclude_unset=True, exclude_none=True
                 )
-                pipe_func_kwargs = final_options.model_dump(exclude_unset=True)
+                logger.debug(
+                    f"Instantiating PipeFunc for step '{step_model.name}' with resolved options: {pipe_func_kwargs}"
+                )
                 funcs.append(pipefunc.PipeFunc(**pipe_func_kwargs))
 
             except PipelineBuildError as e:
