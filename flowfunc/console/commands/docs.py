@@ -40,7 +40,7 @@ def docs(workflow_path: Path, verbose: bool) -> None:
 
         if verbose:
             console.print("\n[bold green]Workflow Model Snippet:[/bold green]")
-            console.print(workflow_model.model_dump(mode='json', exclude_none=True))
+            console.print(workflow_model.model_dump(mode="json", exclude_none=True))
 
         console.print(
             f"Building pipeline for: [cyan]{workflow_model.metadata.name}[/cyan]"

@@ -1,4 +1,3 @@
-from typing import List, Dict
 
 import nltk
 import numpy as np
@@ -11,7 +10,7 @@ nltk.download("stopwords", quiet=True)
 
 
 # Step 1: Text Tokenization
-def tokenize_text(text: str) -> List[str]:
+def tokenize_text(text: str) -> list[str]:
     """
     Tokenizes the input text into a list of words.
 
@@ -33,7 +32,7 @@ def tokenize_text(text: str) -> List[str]:
 
 
 # Step 2: Keyword Extraction
-def extract_keywords(tokens: List[str]) -> List[str]:
+def extract_keywords(tokens: list[str]) -> list[str]:
     """
     Identifies the most frequent words in a list of tokens to serve as keywords.
 
@@ -52,7 +51,7 @@ def extract_keywords(tokens: List[str]) -> List[str]:
 
 
 # Step 3: Summary Generation
-def generate_summary(text: str, keywords: List[str]) -> str:
+def generate_summary(text: str, keywords: list[str]) -> str:
     """
     Creates a brief summary of the text based on keyword relevance.
 
@@ -104,7 +103,7 @@ def analyze_sentiment(summary: str) -> str:
 
 
 # Step 5: Summarization Result Aggregation
-def aggregate_summarization(sentiment: np.ndarray) -> Dict[str, float]:
+def aggregate_summarization(sentiment: np.ndarray) -> dict[str, float]:
     """
     Aggregates sentiment analysis results into a summary dictionary.
 

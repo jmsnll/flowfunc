@@ -17,9 +17,7 @@ from flowfunc.workflow_definition.loader import WorkflowDefinitionLoaderError
 @click.command(name="graph", help="Graphs a workflow using matplotlib (if available).")
 @click.argument(
     "workflow_path",
-    type=click.Path(
-        exists=True, dir_okay=False, path_type=Path
-    ),
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
 )
 @click.option(
     "-v",
