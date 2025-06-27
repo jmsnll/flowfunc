@@ -4,6 +4,9 @@ import logging
 
 import pipefunc
 
+from flowfunc.composition import pipeline as pipeline_resolvers
+from flowfunc.composition import step as step_resolvers
+from flowfunc.composition.chain import Chain
 from flowfunc.exceptions import PipelineBuildError
 from flowfunc.workflow_definition.schema import WorkflowDefinition
 
@@ -12,86 +15,76 @@ logger = logging.getLogger(__name__)
 
 class PipelineBuilder:
     """
-    Constructs a `pipefunc.Pipeline` object from a `WorkflowDefinition` model.
-    It leverages methods within the schema models (`StepDefinition` and `WorkflowDefinition`)
-    to generate the necessary options for `pipefunc.PipeFunc` and `pipefunc.Pipeline`.
+    Constructs a `pipefunc.Pipeline` from a `WorkflowDefinition` by applying
+    chains of pure, stateless resolver functions from the `composition` package.
     """
 
-    @staticmethod
-    def build(workflow_model: WorkflowDefinition) -> pipefunc.Pipeline:
+    def __init__(self):
+        """Initializes the builder by creating reusable chains of resolver functions."""
+        self._step_builder_chain = Chain(step_resolvers.ALL)
+        self._pipeline_builder_chain = Chain(pipeline_resolvers.ALL)
+
+    def build(self, workflow_model: WorkflowDefinition) -> pipefunc.Pipeline:
         """Creates a pipefunc.Pipeline from the validated workflow model."""
-        workflow_metadata_name = (
-            workflow_model.metadata.name
-        )  # Assuming this path is correct
-        logger.info(f"Building pipeline for workflow: '{workflow_metadata_name}'")
+        workflow_name = workflow_model.metadata.name
+        logger.info(f"Building pipeline for workflow: '{workflow_name}'")
+
+        if not workflow_model.spec.steps:
+            raise PipelineBuildError(f"Workflow '{workflow_name}' contains no steps.")
 
         funcs: list[pipefunc.PipeFunc] = []
-
         for step_model in workflow_model.spec.steps:
             try:
-                pipe_func_options = step_model.to_pipefunc_options(
-                    workflow_default_module=workflow_model.spec.default_module,
-                    workflow_global_resources=(
-                        workflow_model.spec.options.default_resources
-                        if workflow_model.spec.options
-                        else None
-                    ),
+                # Start with a clean slate: the raw options from the step definition
+                initial_options = (
+                    step_model.options.model_dump(exclude_none=True, by_alias=True)
+                    if step_model.options
+                    else {}
+                )
+
+                # Execute the chain of step resolvers to compose the final options
+                pipe_func_options = self._step_builder_chain(
+                    initial_options,
+                    step=step_model,
+                    workflow=workflow_model,
                 )
 
                 logger.debug(
                     f"Instantiating PipeFunc for step '{step_model.name}' with resolved options: {pipe_func_options}"
                 )
-
-                # A sanity check, though to_pipefunc_options should guarantee 'func'
-                if "func" not in pipe_func_options or not callable(
-                    pipe_func_options["func"]
-                ):
-                    raise PipelineBuildError(
-                        f"'func' was not correctly resolved to a callable by "
-                        f"StepDefinition.to_pipefunc_options for step '{step_model.name}'."
-                    )
-
                 funcs.append(pipefunc.PipeFunc(**pipe_func_options))
 
-            except PipelineBuildError:
+            except PipelineBuildError as e:
+                logger.error(f"Failed to build step '{step_model.name}': {e}")
                 raise
-            except Exception as e:  # Catch other unexpected errors during this step
-                step_name_for_error = step_model.name or "(unnamed step)"
+            except Exception as e:
                 logger.error(
-                    f"Unexpected error while creating PipeFunc for step '{step_name_for_error}': {e}",
+                    f"An unexpected error occurred while building step '{step_model.name}': {e}",
                     exc_info=True,
                 )
                 raise PipelineBuildError(
-                    f"Unexpected failure to create PipeFunc for step '{step_name_for_error}'. "
-                    f"Original error: {type(e).__name__}: {e}"
+                    f"Unexpected failure during construction of step '{step_model.name}'."
                 ) from e
 
-        pipeline_constructor_kwargs = workflow_model.get_pipeline_constructor_kwargs()
+        # Use the pipeline chain to compose the final kwargs for the Pipeline constructor
+        pipeline_kwargs = self._pipeline_builder_chain(
+            initial_value={},  # Start with an empty dict
+            workflow=workflow_model,
+        )
 
         try:
             logger.debug(
-                f"Instantiating pipefunc.Pipeline for '{workflow_metadata_name}' with "
-                f"{len(funcs)} funcs and kwargs: {pipeline_constructor_kwargs}"
+                f"Instantiating pipefunc.Pipeline for '{workflow_name}' with {len(funcs)} funcs "
+                f"and kwargs: {pipeline_kwargs}"
             )
-            pipeline = pipefunc.Pipeline(funcs, **pipeline_constructor_kwargs)
-
-            logger.info(
-                f"Pipeline for workflow '{workflow_metadata_name}' built successfully."
-            )
+            pipeline = pipefunc.Pipeline(funcs, **pipeline_kwargs)
+            logger.info(f"Pipeline for workflow '{workflow_name}' built successfully.")
             return pipeline
         except Exception as e:
             logger.error(
-                f"Error creating final pipefunc.Pipeline for '{workflow_metadata_name}': {e}",
+                f"Failed to create final pipefunc.Pipeline for '{workflow_name}': {e}",
                 exc_info=True,
             )
-            # Provide more context if it's a TypeError, which often happens with **kwargs issues
-            if isinstance(e, TypeError):
-                logger.exception(
-                    f"TypeError during pipefunc.Pipeline instantiation for '{workflow_metadata_name}'. "
-                    f"Ensure pipeline_constructor_kwargs are valid for the Pipeline constructor. "
-                    f"Kwargs passed: {pipeline_constructor_kwargs}. Error: {e}",
-                    exc_info=False,  # Avoid double logging traceback if already done above
-                )
             raise PipelineBuildError(
-                f"Could not create pipefunc.Pipeline for workflow '{workflow_metadata_name}': {e}"
+                f"Could not create the final pipeline for workflow '{workflow_name}'."
             ) from e
