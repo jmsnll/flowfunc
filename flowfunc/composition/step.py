@@ -152,9 +152,15 @@ def resolve_mapspec(options: StepOptions, step: StepDefinition, **_) -> StepOpti
     zipping, aggregation) without writing a full `mapspec` string manually.
     """
     if options.mapspec:
+        logger.debug(
+            f"Adding mapspec from existing options for step '{step.name}': '{options.mapspec}'"
+        )
         return options
 
     if not step.inputs or not options.output_name:
+        logger.debug(
+            f"No mapspec generated, no inputs or outputs defined for step '{step.name}'"
+        )
         return options
 
     map_mode = step.options.map_mode if step.options else MapMode.BROADCAST
@@ -173,6 +179,9 @@ def resolve_mapspec(options: StepOptions, step: StepDefinition, **_) -> StepOpti
             constant_inputs.append(input_name)
 
     if not iterable_inputs:
+        logger.debug(
+            f"No mapspec generated, no iterable inputs detected for step '{step.name}'"
+        )
         return options
 
     indices = list(string.ascii_lowercase[8:])  # i, j, k, ...
