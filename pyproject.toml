@@ -92,10 +92,6 @@ skip-magic-trailing-comma = false
 # Auto-detect line endings.
 line-ending = "auto"
 
-[tool.uv.workspace]
-members = ["examples/*"]
-
-
 [tool.flowfunc]
 source_directory = "dev/src"
 workflows_directory = "dev/workflows"
@@ -109,4 +105,10 @@ dev = [
   "pre-commit>=4.2.0",
   "pytest>=8.3.5",
   "ruff>=0.11.11",
+]
+docs = [
+    "nltk>=3.9.1",
+    "numpy>=2.2.6",
+    "pipefunc[all]>=0.77.0",
+    "scikit-image>=0.25.2",
 ]
