@@ -4,8 +4,8 @@ import pytest
 import yaml
 
 from flowfunc import locations
-from flowfunc.workflow import loader
-from flowfunc.workflow.schema import WorkflowDefinition
+from flowfunc.workflow_definition import loader
+from flowfunc.workflow_definition.schema import WorkflowDefinition
 
 
 @pytest.fixture
