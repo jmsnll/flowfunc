@@ -138,7 +138,7 @@ class StepDefinition(BaseModel):
         default_factory=dict
     )
     parameters: dict[str, Any] | None = Field(default_factory=dict)
-    output_name: str | None = None
+    outputs: str | list[str] | None = None
     resources: Resources | None = None
     options: StepOptions | None = Field(default_factory=StepOptions)
 
@@ -232,7 +232,7 @@ class StepDefinition(BaseModel):
         if self.options and self.options.mapspec:
             return self.options.mapspec
 
-        if not self.inputs or not self.output_name:
+        if not self.inputs or not self.outputs:
             return None
 
         map_mode = self.options.map_mode if self.options else MapMode.BROADCAST
@@ -253,11 +253,7 @@ class StepDefinition(BaseModel):
 
         indices = list(string.ascii_lowercase[8:])
         input_parts = []
-        output_names = (
-            [self.output_name]
-            if isinstance(self.output_name, str)
-            else self.output_name
-        )
+        output_names = [self.outputs] if isinstance(self.outputs, str) else self.outputs
 
         match map_mode:
             case MapMode.BROADCAST:
@@ -343,8 +339,8 @@ class StepDefinition(BaseModel):
             else {}
         )
 
-        if self.output_name:
-            pf_options["output_name"] = self.output_name
+        if self.outputs:
+            pf_options["output_name"] = self.outputs
         elif self.name:  # Default to step name if no explicit outputs list
             pf_options["output_name"] = self.name
         else:  # Should be caught by Step validation if name is required

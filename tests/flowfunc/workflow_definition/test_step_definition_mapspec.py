@@ -1,6 +1,6 @@
-import pytest
 from typing import Any
 
+import pytest
 from pydantic import ValidationError
 
 from flowfunc.exceptions import PipelineBuildError
@@ -12,11 +12,11 @@ class TestGetPipefuncMapspec:
         "step_data, expected_spec",
         [
             (
-                {"inputs": {"items": "$global.my_list"}, "output_name": "results"},
+                {"inputs": {"items": "$global.my_list"}, "outputs": "results"},
                 "my_list[i] -> results[i]",
             ),
             (
-                {"inputs": {"items": "step1.output"}, "output_name": "results"},
+                {"inputs": {"items": "step1.output"}, "outputs": "results"},
                 "output[i] -> results[i]",
             ),
             (
@@ -25,7 +25,7 @@ class TestGetPipefuncMapspec:
                         "items_a": "$global.list_a",
                         "items_b": "$global.list_b",
                     },
-                    "output_name": "pairs",
+                    "outputs": "pairs",
                     "options": {"map_mode": "broadcast"},
                 },
                 "list_a[i], list_b[j] -> pairs[i,j]",
@@ -37,7 +37,7 @@ class TestGetPipefuncMapspec:
                         "multiplier": 10,
                         "prefix": "p",
                     },
-                    "output_name": "results",
+                    "outputs": "results",
                 },
                 "my_list[i], multiplier, prefix -> results[i]",
             ),
@@ -65,7 +65,7 @@ class TestGetPipefuncMapspec:
                         "files": "$global.file_list",
                         "configs": "$global.config_list",
                     },
-                    "output_name": "processed",
+                    "outputs": "processed",
                     "options": {"map_mode": "zip"},
                 },
                 "file_list[i], config_list[i] -> processed[i]",
@@ -78,7 +78,7 @@ class TestGetPipefuncMapspec:
                         "c": "$global.z",
                         "factor": 2,
                     },
-                    "output_name": "results",
+                    "outputs": "results",
                     "options": {"map_mode": "zip"},
                 },
                 "x[i], y[i], z[i], factor -> results[i]",
@@ -100,7 +100,7 @@ class TestGetPipefuncMapspec:
             (
                 {
                     "inputs": {"items": "step1.results"},
-                    "output_name": "summary",
+                    "outputs": "summary",
                     "options": {"map_mode": "aggregate"},
                 },
                 "results[i] -> summary",
@@ -108,7 +108,7 @@ class TestGetPipefuncMapspec:
             (
                 {
                     "inputs": {"items": "$global.data", "method": "average"},
-                    "output_name": "result",
+                    "outputs": "result",
                     "options": {"map_mode": "aggregate"},
                 },
                 "data[i], method -> result",
@@ -133,14 +133,14 @@ class TestGetPipefuncMapspec:
             ({"inputs": {"a": 1, "b": "hello"}}),
             ({"inputs": {}}),
             ({"inputs": None}),
-            ({"inputs": {"items": "$global.data"}, "output_name": None}),
+            ({"inputs": {"items": "$global.data"}, "outputs": None}),
         ],
         ids=[
             "return_none_if_mapspec_is_explicit",
             "return_none_for_all_constant_inputs",
             "return_none_for_empty_inputs",
             "return_none_for_null_inputs",
-            "return_none_if_output_name_is_missing",
+            "return_none_if_outputs_is_missing",
         ],
     )
     def test_mapspec_should_return_none(self, step_data: dict[str, Any]):
@@ -155,7 +155,7 @@ class TestGetPipefuncMapspec:
         """Tests that a validation error is raised for an unknown map_mode."""
         step_data = {
             "inputs": {"items": "$global.data"},
-            "output_name": "results",
+            "outputs": "results",
             "options": {"map_mode": "non_existent_mode"},
         }
         with pytest.raises(
@@ -168,7 +168,7 @@ class TestGetPipefuncMapspec:
         too_many_inputs = {f"in_{i}": f"$global.list_{i}" for i in range(20)}
         step_data = {
             "inputs": too_many_inputs,
-            "output_name": "results",
+            "outputs": "results",
             "options": {"map_mode": "broadcast"},
         }
         step = StepDefinition(name="test_too_many", **step_data)
