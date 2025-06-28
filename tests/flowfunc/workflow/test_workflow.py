@@ -1,40 +1,33 @@
-import pipefunc
+from pathlib import Path
+
 import pytest
 
-from flowfunc.workflow import function
-from flowfunc.workflow import pipeline
-from flowfunc.workflow.exceptions import PipelineBuildError
-from flowfunc.workflow.exceptions import WorkflowSchemaValidationError
-from flowfunc.workflow.schema import PipelineDefinition
-from flowfunc.workflow.schema import StepDefinition
-from flowfunc.workflow.schema import WorkflowDefinition
+from flowfunc.exceptions import PipelineBuildError
+from flowfunc.pipeline import PipelineBuilder
+from flowfunc.workflow_definition.schema import WorkflowDefinition
 
 
 @pytest.fixture
 def valid_workflow_dict() -> dict:
-    """A valid workflow definition as a dictionary."""
+    """Provides a valid workflow definition as a dictionary."""
     return {
         "apiVersion": "flowfunc.dev/v1beta1",
         "kind": "Pipeline",
         "metadata": {
             "name": "example-workflow",
             "version": "1.0.1",
-            "description": "An example workflow for testing.",
+            "description": "An example workflow for testing purposes.",
         },
         "spec": {
-            "global_inputs": {},
             "steps": [
                 {
                     "name": "calculate_md5_hash",
                     "func": "tests.flowfunc.workflow.helpers.md5_hash",
-                    "description": "Calculates an MD5 hash of input data.",
+                    "description": "Calculates an MD5 hash of the input data.",
                     "inputs": {"text_to_be_hashed": "hello, world!"},
+                    "outputs": "hashed_text",
                     "options": {
-                        "output": "hashed_text",
                         "mapspec": "text_to_be_hashed[n] -> hashed_text[n]",
-                        "defaults": {
-                            "text_to_be_hashed": "default input if not wired",
-                        },
                         "profile": True,
                         "debug": True,
                     },
@@ -42,62 +35,47 @@ def valid_workflow_dict() -> dict:
                 {
                     "name": "make_bold",
                     "func": "tests.flowfunc.workflow.helpers.markdown_make_bold",
-                    "description": "Wraps the input text to make it bold.",
+                    "description": "Wraps text to make it bold in Markdown.",
+                    "inputs": {"text_to_be_made_bold": "calculate_md5_hash.hashed_text"},
+                    "outputs": "bold_string",
                     "options": {
-                        "output": "bold_string",
-                        "mapspec": "hashed_text[n] -> bold_string[n]",
+                        "mapspec": "text_to_be_made_bold[n] -> bold_string[n]",
                         "profile": True,
                         "debug": True,
-                        "renames": {"text_to_be_made_bold": "hashed_text"},
                     },
                 },
             ],
-            "outputs": ["make_bold.bold_string"],
+            "outputs": {
+                "make_bold.bold_string": "bold_string.txt"
+            },
         },
     }
 
 
 @pytest.fixture
-def base_pipeline_model(valid_workflow_dict: dict) -> WorkflowDefinition:
-    """Provides a validated FlowFuncPipelineModel instance."""
-    try:
-        return WorkflowDefinition.model_validate(valid_workflow_dict)
-    except WorkflowSchemaValidationError as e:
-        pytest.fail(f"Test fixture setup failed: Pydantic validation error: {e}")
-        raise
+def base_workflow_definition(valid_workflow_dict: dict) -> WorkflowDefinition:
+    """Provides a validated WorkflowDefinition instance."""
+    return WorkflowDefinition.model_validate(valid_workflow_dict)
 
 
-@pytest.fixture
-def first_step_model(base_pipeline_model: WorkflowDefinition) -> StepDefinition:
-    """Provides the first StepModel from the base_pipeline_model."""
-    return base_pipeline_model.spec.steps[0]
-
-
-@pytest.fixture
-def pipefunc_function_from_first_step(
-    first_step_model: StepDefinition,
-) -> pipefunc.PipeFunc:
-    """Provides a pipefunc.Function created from the first_step_model."""
-    return function.from_model(first_step_model)
-
-
-def test_step_with_only_parameters(valid_workflow_dict) -> None:
-    """Test a step that gets its input from parameters, not wiring."""
+def test_step_with_parameters_as_defaults(valid_workflow_dict: dict) -> None:
+    """Ensures that `parameters` are correctly treated as defaults."""
     step_dict = {
         "name": "param_step",
         "func": "tests.flowfunc.workflow.helpers.md5_hash",
         "parameters": {"text_to_be_hashed": "direct_value_from_params"},
         "options": {"output": "hashed_param_value"},
     }
-    step_model = StepDefinition.model_validate(step_dict)
-    pf_func = function.from_model(step_model)
+    valid_workflow_dict["spec"]["steps"] = [step_dict]
+    workflow = WorkflowDefinition.model_validate(valid_workflow_dict)
+    pf_func = workflow.pipeline.functions[0]
 
     assert pf_func.defaults["text_to_be_hashed"] == "direct_value_from_params"
     assert pf_func.output == "hashed_param_value"
 
 
-def test_step_with_various_options(valid_workflow_dict) -> None:
-    """Test a step with more PipefuncOptionsModel fields."""
+def test_step_with_various_options(valid_workflow_dict: dict) -> None:
+    """Validates that various `PipefuncOptionsModel` fields are correctly applied."""
     step_dict = {
         "name": "options_galore_step",
         "func": "tests.flowfunc.workflow.helpers.md5_hash",
@@ -106,17 +84,17 @@ def test_step_with_various_options(valid_workflow_dict) -> None:
             "output": "optioned_output",
             "cache": True,
             "internal_shape": "?",
-            # "post_execution_hook": "some.hook.function", # Would require mocking/setup
             "resources": {
                 "cpus": 2,
                 "memory": "4GB",
-                "parallelization_mode": "internal",  # Literal["internal"]
+                "parallelization_mode": "internal",
             },
             "variant": "gpu_optimized",
         },
     }
-    step_model = StepDefinition.model_validate(step_dict)
-    pf_func = function.from_model(step_model)
+    valid_workflow_dict["spec"]["steps"] = [step_dict]
+    workflow = WorkflowDefinition.model_validate(valid_workflow_dict)
+    pf_func = workflow.pipeline.functions[0]
 
     assert pf_func.cache is True
     assert pf_func.internal_shape == "?"
@@ -127,113 +105,106 @@ def test_step_with_various_options(valid_workflow_dict) -> None:
     assert pf_func.variant[None] == "gpu_optimized"
 
 
-def test_step_creation_with_problematic_config_raises_error(
-    first_step_model: StepDefinition,
+def test_step_with_invalid_rename_raises_error(valid_workflow_dict: dict) -> None:
+    """Tests that a `PipelineBuildError` is raised for a problematic configuration."""
+    valid_workflow_dict["spec"]["steps"][0]["options"]["renames"] = {
+        "non_existent_arg": "some_source"
+    }
+    definition = WorkflowDefinition.model_validate(valid_workflow_dict)
+
+    with pytest.raises(PipelineBuildError, match="cannot be renamed"):
+        definition
+
+
+def test_single_step_can_form_valid_pipeline(valid_workflow_dict: dict) -> None:
+    """Ensures a single valid step can form a complete and valid pipeline."""
+    valid_workflow_dict["spec"]["steps"] = [valid_workflow_dict["spec"]["steps"][0]]
+    definition = WorkflowDefinition.model_validate(valid_workflow_dict)
+    workflow = definition
+
+    # The validation is implicitly done during `pipefunc.Pipeline` instantiation.
+    # We can explicitly call it to be sure.
+    workflow.pipeline.validate()
+    assert len(workflow.pipeline.functions) == 1
+
+
+def test_pipeline_creation_from_definition(
+        base_workflow_definition: WorkflowDefinition,
 ) -> None:
-    modified_step_model = first_step_model.model_copy(deep=True)
-    modified_step_model.options.renames = {"non_existent_arg": "some_source"}
+    """Verifies that a `WorkflowDefinition` correctly initializes a `pipefunc.Pipeline`."""
+    pipeline = PipelineBuilder().build(base_workflow_definition)
 
-    with pytest.raises(PipelineBuildError):  # Or ValueError, TypeError, etc.
-        function.from_model(modified_step_model)
-
-
-def test_step_creation_with_scope_prefixes_renamed_outputs(  # Or inputs, depending on what 'scope' does
-    first_step_model: StepDefinition,
-) -> None:
-    modified_step_model = first_step_model.model_copy(deep=True)
-    scope_name = "example_scope"
-    modified_step_model.options.scope = scope_name
-
-    pf_function = function.from_model(modified_step_model)
-
-    assert pf_function.renames
-    for internal_arg, pipeline_name in pf_function.renames.items():
-        assert pipeline_name.startswith(scope_name + "."), (
-            f"Rename '{pipeline_name}' for arg '{internal_arg}' not prefixed by scope '{scope_name}'"
-        )
-
-
-def test_single_step_function_forms_valid_pipeline(
-    pipefunc_function_from_first_step: pipefunc.PipeFunc,
-) -> None:
-    pipeline_instance = pipefunc.Pipeline([pipefunc_function_from_first_step])
-    pipeline_instance.validate()
-
-
-def test_pipeline_creation_from_model_initializes_correctly(
-    base_pipeline_model: WorkflowDefinition,
-    valid_workflow_dict: dict,
-) -> None:
-    pipeline_instance = pipeline.from_model(base_pipeline_model.spec)
-
-    expected_num_steps = len(valid_workflow_dict["spec"]["steps"])
-    assert len(pipeline_instance.functions) == expected_num_steps
-    assert len(pipeline_instance.graph.nodes) == 3
-    assert len(pipeline_instance.graph.edges) == 2
+    assert len(pipeline.functions) == 2
+    assert len(pipeline.graph.nodes) == 4
+    assert len(pipeline.graph.edges) == 2
 
     try:
-        results = pipeline_instance.map({"text_to_be_hashed": ["test1", "test2"]})
-        assert len(results.get("bold_string").output) == 2
+        results = pipeline.map({"text_to_be_hashed": ["test1", "test2"]})
+        assert "bold_string" in results
+        assert len(results["bold_string"].output) == 2
     except Exception as e:
-        pytest.fail(f"Pipeline execution failed in test: {e}")
+        pytest.fail(f"Pipeline execution failed during test: {e}")
 
 
-def test_pipeline_with_new_import_path(tmp_path, monkeypatch) -> None:
-    """Test pipeline using default_module for function resolution."""
+def test_pipeline_with_custom_import_path(tmp_path: Path, monkeypatch) -> None:
+    """Tests function resolution using a temporary module path."""
     monkeypatch.syspath_prepend(str(tmp_path))
     helpers_dir = tmp_path / "custom_helpers"
     helpers_dir.mkdir()
-    with open(helpers_dir / "__init__.py", "w") as f:
-        f.write("")
-    with open(helpers_dir / "my_funcs.py", "w") as f:
-        f.write("def simple_func(x): return x * 2\n")
+    (helpers_dir / "__init__.py").touch()
+    (helpers_dir / "my_funcs.py").write_text("def simple_func(input_numbers): return input_numbers * 2")
 
-    pipeline_dict = {
+    workflow_dict = {
         "apiVersion": "flowfunc.dev/v1",
         "kind": "Pipeline",
-        "metadata": {"name": "test-default-module"},
+        "metadata": {"name": "test-custom-import"},
         "spec": {
             "steps": [
                 {
                     "name": "doubler",
                     "func": "custom_helpers.my_funcs.simple_func",
+                    "inputs": {"input_numbers": "$global.input_numbers"},
+                    "outputs": "doubled_num",
                     "options": {
-                        "output": "doubled_num",
-                        "mapspec": "x[n] -> doubled_num[n]",
+                        "mapspec": "input_numbers[n] -> doubled_num[n]",
                     },
                 }
             ],
-            "outputs": ["doubled_num"],
+            "outputs": {
+                "doubler.doubled_num": "doubled_num.json"
+            },
         },
     }
-    pipeline_model = WorkflowDefinition.model_validate(pipeline_dict)
-    pf_pipeline = pipeline.from_model(pipeline_model.spec)
-
-    assert len(pf_pipeline.functions) == 1
-    results = pf_pipeline.map({"x": [1, 2, 3]})
+    workflow = WorkflowDefinition.model_validate(workflow_dict)
+    pipeline = PipelineBuilder().build(workflow)
+    assert len(pipeline.functions) == 1
+    results = pipeline.map({"input_numbers": [1, 2, 3]})
     assert list(results["doubled_num"].output) == [2, 4, 6]
 
 
-def test_pipeline_with_various_pipeline_configs() -> None:
-    """Test various pipeline_config settings."""
-    spec_dict = {
-        "pipeline_config": {
-            "validate_type_annotations": True,
-            "lazy": True,
-            "debug": True,
+def test_pipeline_config_settings() -> None:
+    """Verifies that `pipeline_config` settings are passed to `pipefunc.Pipeline`."""
+    workflow_dict = {
+        "apiVersion": "flowfunc.dev/v1beta1",
+        "kind": "Pipeline",
+        "metadata": {"name": "config-test"},
+        "spec": {
+            "options": {
+                "validate_type_annotations": True,
+                "lazy": True,
+                "debug": True,
+            },
+            "steps": [
+                {
+                    "name": "s1",
+                    "func": "tests.flowfunc.workflow.helpers.md5_hash",
+                    "parameters": {"text_to_be_hashed": "abc"},
+                    "outputs": "o1",
+                }
+            ],
         },
-        "steps": [
-            {
-                "name": "s1",
-                "func": "tests.flowfunc.workflow.helpers.md5_hash",
-                "parameters": {"text_to_be_hashed": "abc"},
-                "options": {"output": "o1"},
-            }
-        ],
     }
-    spec_model = PipelineDefinition.model_validate(spec_dict)
-    pf_pipeline = pipeline.from_model(spec_model)
-
-    assert pf_pipeline.validate_type_annotations is True
-    assert pf_pipeline.lazy is True
-    assert pf_pipeline.debug is True
+    workflow = WorkflowDefinition.model_validate(workflow_dict)
+    assert workflow.spec.options.validate_type_annotations is True
+    assert workflow.spec.options.lazy is True
+    assert workflow.spec.options.debug is True
