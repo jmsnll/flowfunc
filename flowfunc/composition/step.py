@@ -3,6 +3,7 @@ import logging
 import string
 from typing import Any
 
+from flowfunc.composition.utils import import_callable
 from flowfunc.exceptions import PipelineBuildError
 from flowfunc.workflow_definition import StepOptions
 from flowfunc.workflow_definition.schema import MapMode
