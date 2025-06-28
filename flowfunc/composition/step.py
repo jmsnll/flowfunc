@@ -243,11 +243,49 @@ def resolve_mapspec(options: StepOptions, step: StepDefinition, **_) -> StepOpti
     return options.model_copy(update={"mapspec": mapspec_string})
 
 
+def validate_step_name_is_unique(
+    options: StepOptions, workflow: WorkflowDefinition, **_
+) -> StepOptions:
+    """Validates that each step name in the workflow is unique."""
+    seen_names = set()
+    for step in workflow.spec.steps:
+        if step.name in seen_names:
+            raise PipelineBuildError(
+                f"Duplicate step name '{step.name}' found. Step names must be unique."
+            )
+        seen_names.add(step.name)
+    return options
+
+
+def validate_step_dependencies_exist(
+    options: StepOptions, workflow: WorkflowDefinition, **_
+) -> StepOptions:
+    """Validates that all step dependencies point to defined steps."""
+    all_step_names = {step.name for step in workflow.spec.steps}
+    for step in workflow.spec.steps:
+        for input_name, input_item in step.inputs.items():
+            input_value = (
+                input_item.value if hasattr(input_item, "value") else input_item
+            )
+            if isinstance(input_value, str) and "." in input_value:
+                dependency_name = input_value.split(".", 1)[0]
+                if dependency_name.startswith("$global"):
+                    continue
+                if dependency_name not in all_step_names:
+                    raise PipelineBuildError(
+                        f"Step '{step.name}' has an undefined dependency: "
+                        f"input '{input_name}' refers to an unknown step '{dependency_name}'."
+                    )
+    return options
+
+
 ALL = [
     create_initial_options,
     resolve_output_name,
     resolve_callable,
     validate_step_inputs,
+    validate_step_name_is_unique,
+    validate_step_dependencies_exist,
     resolve_renames,
     resolve_defaults,
     resolve_resources,

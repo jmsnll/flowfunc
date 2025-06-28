@@ -1,15 +1,18 @@
-# Fixtures for shared objects
 import pytest
 
 from flowfunc.composition.step import resolve_defaults
 from flowfunc.composition.step import resolve_renames
 from flowfunc.composition.step import resolve_resources
 from flowfunc.composition.step import resolve_scope
+from flowfunc.composition.step import validate_step_dependencies_exist
+from flowfunc.composition.step import validate_step_name_is_unique
+from flowfunc.exceptions import PipelineBuildError
 from flowfunc.workflow_definition import Resources
 from flowfunc.workflow_definition import StepDefinition
 from flowfunc.workflow_definition import StepOptions
 from flowfunc.workflow_definition import WorkflowSpec
 from flowfunc.workflow_definition import WorkflowSpecOptions
+from flowfunc.workflow_definition.schema import InputItem
 from flowfunc.workflow_definition.schema import KindEnum
 from flowfunc.workflow_definition.schema import Metadata
 from flowfunc.workflow_definition.schema import WorkflowDefinition
@@ -32,7 +35,6 @@ def initial_options() -> StepOptions:
     return StepOptions()
 
 
-# Tests for resolve_renames
 def test_resolve_renames_with_global_inputs(initial_options):
     step = StepDefinition(
         name="test_step",
@@ -71,7 +73,6 @@ def test_resolve_renames_no_inputs(initial_options):
     assert not options.renames
 
 
-# Tests for resolve_defaults
 def test_resolve_defaults_with_parameters(initial_options):
     step = StepDefinition(
         name="test_step", parameters={"param1": 100, "param2": "value"}
@@ -96,7 +97,6 @@ def test_resolve_defaults_no_parameters(initial_options):
     assert not options.defaults
 
 
-# Tests for resolve_resources
 def test_resolve_resources_merges_global_and_step(initial_options, empty_workflow):
     empty_workflow.spec.options = WorkflowSpecOptions(
         default_resources=Resources(cpus=2, memory="4Gi")
@@ -127,7 +127,6 @@ def test_resolve_resources_none_defined(initial_options, empty_workflow):
     assert not options.resources
 
 
-# Tests for resolve_scope
 def test_resolve_scope_from_step_options(initial_options):
     scope_name = "my_scope"
     step = StepDefinition(name="test_step", options=StepOptions(scope=scope_name))
@@ -145,3 +144,107 @@ def test_resolve_scope_is_none_in_options(initial_options):
     step = StepDefinition(name="test_step", options=StepOptions(scope=None))
     options = resolve_scope(initial_options, step)
     assert options.scope is None
+
+
+def test_validate_step_name_is_unique_success(empty_workflow, initial_options):
+    empty_workflow.spec.steps = [
+        StepDefinition(name="step-one"),
+        StepDefinition(name="step-two"),
+    ]
+    try:
+        validate_step_name_is_unique(workflow=empty_workflow, options=initial_options)
+    except PipelineBuildError:
+        pytest.fail("validate_step_name_is_unique raised an exception unexpectedly.")
+
+
+def test_validate_step_name_is_unique_failure_duplicate_name(
+    empty_workflow, initial_options
+):
+    empty_workflow.spec.steps = [
+        StepDefinition(name="step-one"),
+        StepDefinition(name="step-two"),
+        StepDefinition(name="step-one"),
+    ]
+    with pytest.raises(PipelineBuildError) as excinfo:
+        validate_step_name_is_unique(workflow=empty_workflow, options=initial_options)
+
+    assert "Duplicate step name 'step-one' found" in str(excinfo.value)
+
+
+def test_validate_step_name_is_unique_with_no_steps(empty_workflow, initial_options):
+    empty_workflow.spec.steps = []
+    try:
+        validate_step_name_is_unique(workflow=empty_workflow, options=initial_options)
+    except PipelineBuildError:
+        pytest.fail(
+            "validate_step_name_is_unique raised an exception on an empty workflow."
+        )
+
+
+def test_validate_step_dependencies_exist_success(empty_workflow, initial_options):
+    empty_workflow.spec.steps = [
+        StepDefinition(name="step-one"),
+        StepDefinition(
+            name="step-two",
+            inputs={"data": InputItem(value="step-one.output")},
+        ),
+    ]
+    try:
+        validate_step_dependencies_exist(
+            workflow=empty_workflow, options=initial_options
+        )
+    except PipelineBuildError:
+        pytest.fail(
+            "validate_step_dependencies_exist raised an exception unexpectedly."
+        )
+
+
+def test_validate_step_dependencies_exist_with_global_success(
+    empty_workflow, initial_options
+):
+    empty_workflow.spec.steps = [
+        StepDefinition(
+            name="step-one",
+            inputs={"config": InputItem(value="$global.my_config")},
+        ),
+    ]
+    try:
+        validate_step_dependencies_exist(
+            workflow=empty_workflow, options=initial_options
+        )
+    except PipelineBuildError:
+        pytest.fail("Validator failed on a valid global dependency.")
+
+
+def test_validate_step_dependencies_exist_failure_unknown_step(
+    empty_workflow, initial_options
+):
+    empty_workflow.spec.steps = [
+        StepDefinition(name="step-one"),
+        StepDefinition(
+            name="step-two",
+            inputs={"data": InputItem(value="unknown_step.output")},
+        ),
+    ]
+    with pytest.raises(PipelineBuildError) as excinfo:
+        validate_step_dependencies_exist(
+            workflow=empty_workflow, options=initial_options
+        )
+
+    assert "undefined dependency" in str(excinfo.value)
+    assert "refers to an unknown step 'unknown_step'" in str(excinfo.value)
+
+
+def test_validate_step_dependencies_exist_no_dependencies(
+    empty_workflow, initial_options
+):
+    empty_workflow.spec.steps = [
+        StepDefinition(name="step-one"),
+        StepDefinition(name="step-two", parameters={"param": 123}),
+    ]
+    try:
+        validate_step_dependencies_exist(
+            workflow=empty_workflow, options=initial_options
+        )
+    except PipelineBuildError:
+        pytest.fail("Validator failed on a workflow with no dependencies.")
