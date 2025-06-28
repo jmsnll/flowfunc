@@ -9,56 +9,44 @@ logger = logging.getLogger(__name__)
 
 
 class InputProvider:
-    """Loads user-provided inputs from various sources (file, JSON string)."""
+    """Loads user inputs from a JSON file or string."""
 
     def load_from_file(self, file_path: Path) -> dict[str, Any]:
-        """Loads inputs from a JSON file."""
-        logger.info(f"Loading inputs from file: {file_path}")
+        logger.info(f"Loading inputs from: {file_path}")
 
-        if not file_path.exists() or not file_path.is_file():
-            raise InputProviderError(
-                f"Input file not found or not a valid file: {file_path}"
-            )
+        if not file_path.is_file():
+            raise InputProviderError(f"Invalid input file: {file_path}")
 
         try:
-            with file_path.open("r", encoding="utf-8") as f:
+            with file_path.open(encoding="utf-8") as f:
                 data = json.load(f)
-        except json.JSONDecodeError as e:
+        except (OSError, json.JSONDecodeError) as e:
             raise InputProviderError(
-                f"Invalid JSON in input file {file_path}: {e}"
-            ) from e
-        except OSError as e:
-            raise InputProviderError(
-                f"Could not read input file {file_path}: {e}"
+                f"Failed to read/parse input file {file_path}: {e}"
             ) from e
 
         if not isinstance(data, dict):
             raise InputProviderError(
-                f"Inputs from file {file_path} must be a JSON object (dictionary)."
+                f"Input file {file_path} must contain a JSON object."
             )
 
-        logger.info(f"Successfully loaded inputs from file {file_path}.")
+        logger.info("Inputs loaded successfully.")
         return data
 
     def load_from_json_string(self, json_string: str) -> dict[str, Any]:
-        """Loads inputs from a JSON string."""
         logger.info("Loading inputs from JSON string.")
+
         if not json_string:
-            logger.warning(
-                "Empty JSON string provided for inputs. Returning empty dictionary."
-            )
+            logger.warning("Empty JSON string provided. Returning empty dict.")
             return {}
+
         try:
             data = json.loads(json_string)
         except json.JSONDecodeError as e:
-            raise InputProviderError(
-                f"Invalid JSON string provided for inputs: {e}"
-            ) from e
+            raise InputProviderError(f"Invalid JSON string: {e}") from e
 
         if not isinstance(data, dict):
-            raise InputProviderError(
-                "Inputs from JSON string must be a JSON object (dictionary)."
-            )
+            raise InputProviderError("JSON string must contain a JSON object.")
 
-        logger.info("Successfully loaded inputs from JSON string.")
+        logger.info("Inputs loaded successfully.")
         return data

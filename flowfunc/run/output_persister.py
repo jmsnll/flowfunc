@@ -14,10 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class OutputPersister:
-    """
-    Persists pipeline results to disk according to workflow output definitions,
-    handling global workflow scope and using the new serializer lookup.
-    """
+    """Persists pipeline results to disk based on workflow output definitions."""
 
     def persist(
         self,
@@ -25,143 +22,87 @@ class OutputPersister:
         workflow_model: WorkflowDefinition,
         output_dir: Path,
     ) -> dict[str, str]:
-        """
-        Saves declared workflow outputs to the output directory.
-        Returns a manifest of {declared_output_name: absolute_file_path_string}.
-        """
         declared_outputs: dict[str, Path] | None = workflow_model.spec.outputs
         if not declared_outputs:
-            logger.info(
-                "No output specifications provided in workflow. Skipping output persistence."
-            )
+            logger.info("No outputs defined; skipping persistence.")
             return {}
 
         if not output_dir.exists():
-            logger.warning(
-                f"Base output directory {output_dir} does not exist. Creating it."
-            )
             try:
                 output_dir.mkdir(parents=True, exist_ok=True)
+                logger.warning(f"Created missing output directory: {output_dir}")
             except OSError as e:
                 raise OutputPersisterError(
-                    f"Could not create base output directory {output_dir}: {e}"
+                    f"Cannot create output dir {output_dir}: {e}"
                 ) from e
 
-        persisted_outputs_manifest: dict[str, str] = {}
-        logger.info(f"Persisting workflow outputs to base directory: {output_dir}")
+        scope = getattr(workflow_model.spec.options, "scope", None)
+        manifest: dict[str, str] = {}
 
-        global_scope: str | None = None
-        if workflow_model.spec.options and workflow_model.spec.options.scope:
-            global_scope = workflow_model.spec.options.scope
+        logger.info(f"Persisting outputs to: {output_dir}")
 
-        if global_scope:
-            logger.debug(
-                f"Using global output scope for result lookup: '{global_scope}'"
-            )
-
-        for declared_output_name, defined_path_spec in declared_outputs.items():
-            actual_result_key = (
-                f"{global_scope}.{declared_output_name}"
-                if global_scope
-                else declared_output_name
-            )
-
-            if actual_result_key not in results:
-                logger.warning(
-                    f"Output '{declared_output_name}' (expected as '{actual_result_key}' in pipeline results) "
-                    "not found. Skipping."
-                )
+        for name, rel_path in declared_outputs.items():
+            result_key = f"{scope}.{name}" if scope else name
+            if result_key not in results:
+                logger.warning(f"Result key '{result_key}' missing; skipping '{name}'.")
                 continue
 
-            data_to_persist = self._prepare_data_for_serialization(
-                results[actual_result_key].output
+            target_path = (
+                rel_path
+                if rel_path.is_absolute()
+                else (output_dir / rel_path).resolve()
             )
-            target_file_path: Path
-            if defined_path_spec.is_absolute():
-                target_file_path = defined_path_spec
-            else:
-                target_file_path = (output_dir / defined_path_spec).resolve()
+            data = self._prepare_data_for_serialization(results[result_key].output)
 
             try:
-                logger.debug(
-                    f"Attempting to persist output '{declared_output_name}' (from result key '{actual_result_key}') to '{target_file_path}'."
-                )
-
-                target_file_path.parent.mkdir(parents=True, exist_ok=True)
-
-                self._serialize_output(data_to_persist, target_file_path)
-
-                persisted_outputs_manifest[declared_output_name] = str(target_file_path)
-                logger.info(
-                    f"Successfully persisted '{declared_output_name}' to '{target_file_path}'."
-                )
-
-            # Only log the exceptions, as re-raising would stop persisting all remaining outputs too
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                logger.debug(f"Persisting '{name}' to: {target_path}")
+                self._serialize_output(data, target_path)
+                manifest[name] = str(target_path)
+                logger.info(f"Persisted '{name}' → {target_path}")
             except OutputPersisterError:
-                logger.exception(
-                    f"Serialization failed for output '{declared_output_name}' to path '{target_file_path}'."
-                )
-
+                logger.exception(f"Failed to serialize '{name}' → {target_path}")
             except OSError as e:
                 logger.error(
-                    f"Could not create directory for output '{declared_output_name}' at '{target_file_path.parent}': {e}",
+                    f"Dir creation failed for '{name}' at {target_path.parent}: {e}",
                     exc_info=True,
                 )
             except Exception as e:
                 logger.error(
-                    f"Unexpected error persisting output '{declared_output_name}' to '{target_file_path}': {e}",
+                    f"Unexpected error persisting '{name}' → {target_path}: {e}",
                     exc_info=True,
                 )
 
-        return persisted_outputs_manifest
+        return manifest
 
     def _prepare_data_for_serialization(self, data: Any) -> Any:
-        """
-        Recursively converts known non-standard types into serializable Python objects.
-        This is a universal cleanup step that runs for all data before serialization.
-        """
+        """Converts non-standard types (e.g., NumPy) into Python-native types."""
         if isinstance(data, np.ndarray):
             return data.tolist()
-        if isinstance(data, np.integer):
-            return int(data)
-        if isinstance(data, np.floating):
-            return float(data)
-        if isinstance(data, np.bool_):
-            return bool(data)
-
+        if isinstance(data, (np.integer, np.floating, np.bool_)):
+            return data.item()
         if isinstance(data, list):
-            return [self._prepare_data_for_serialization(item) for item in data]
+            return [self._prepare_data_for_serialization(d) for d in data]
         if isinstance(data, dict):
-            return {
-                key: self._prepare_data_for_serialization(value)
-                for key, value in data.items()
-            }
-
+            return {k: self._prepare_data_for_serialization(v) for k, v in data.items()}
         return data
 
-    def _serialize_output(
-        self,
-        data: Any,
-        file_path: Path,
-    ) -> None:
-        """Serializes and writes data to a file using a looked-up serializer."""
-        serializer_handler: IOSerializer | None = lookup_serializer(file_path)
-
-        if serializer_handler and serializer_handler.can_dump:
-            try:
-                logger.debug(
-                    f"Using serializer '{serializer_handler.name}' for path '{file_path}'"
-                )
-                serializer_handler.dump(data, file_path)
-            except IOSerializerError as e:
-                raise OutputPersisterError(
-                    f"Serialization failed for {file_path}: {e}"
-                ) from e
-            except Exception as e:
-                raise OutputPersisterError(
-                    f"Unexpected error during serialization of {file_path} with {serializer_handler.name}: {e}"
-                ) from e
-        else:
+    def _serialize_output(self, data: Any, file_path: Path) -> None:
+        """Serializes data to disk using appropriate serializer."""
+        serializer: IOSerializer | None = lookup_serializer(file_path)
+        if not serializer or not serializer.can_dump:
             raise OutputPersisterError(
-                f"No suitable serializer found or dumping not supported for file type: '{file_path.suffix}' (path: {file_path})"
+                f"No serializer for '{file_path.suffix}' at {file_path}"
             )
+
+        try:
+            logger.debug(f"Using serializer '{serializer.name}' for {file_path}")
+            serializer.dump(data, file_path)
+        except IOSerializerError as e:
+            raise OutputPersisterError(
+                f"Serialization failed for {file_path}: {e}"
+            ) from e
+        except Exception as e:
+            raise OutputPersisterError(
+                f"Error during serialization of {file_path} with '{serializer.name}': {e}"
+            ) from e

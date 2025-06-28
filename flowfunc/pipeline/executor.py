@@ -9,25 +9,23 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineExecutor:
-    """Executes a `pipefunc.Pipeline` with resolved inputs."""
+    """Executes a `pipefunc.Pipeline` with provided inputs."""
 
     def execute(
-        self, pipeline: Pipeline, resolved_inputs: dict[str, Any], name: str
+        self, pipeline: Pipeline, inputs: dict[str, Any], name: str
     ) -> dict[str, Any]:
-        """Executes the pipeline using the .map() method."""
-        pipeline_name = name or "Unnamed Pipeline"
-        logger.info(f"Executing pipeline: {pipeline_name}")
-        logger.debug(f"Pipeline inputs for execution: {resolved_inputs}")
+        name = name or "Unnamed Pipeline"
+        logger.info(f"Executing pipeline: {name}")
+        logger.debug(f"Pipeline inputs for execution: {inputs}")
 
         try:
-            # Consider if you need to pass an executor, profile_path, etc., based on your app's capabilities
-            results = pipeline.map(resolved_inputs)
-            logger.info(f"Pipeline '{pipeline_name}' execution completed.")
+            results = pipeline.map(inputs)
+            logger.info(f"Pipeline '{name}' execution completed.")
             return results
-        except Exception as e:  # Catch specific pipefunc execution errors
+        except Exception as e:
             logger.error(
-                f"Error during pipeline execution '{pipeline_name}': {e}", exc_info=True
+                f"Error during pipeline execution '{name}': {e}", exc_info=True
             )
             raise PipelineExecutionError(
-                f"Pipeline execution failed for '{pipeline_name}': {e}"
+                f"Pipeline execution failed for '{name}': {e}"
             ) from e

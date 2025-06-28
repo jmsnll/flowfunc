@@ -8,30 +8,21 @@ logger = logging.getLogger(__name__)
 
 
 class SummaryPersister:
-    """Saves the final run summary to a file."""
+    """Persists a run summary to disk as JSON."""
 
-    def save(self, summary_data: Summary, file_name: str = "summary.json") -> Path:
-        """
-        Saves the Summary object to a JSON file in the summary_data.run_dir.
-        Returns the path to the saved summary file.
-        """
-        if not summary_data.run_dir:
-            raise SummaryPersistenceError(
-                "Run directory not set in Summary data. Cannot save summary."
-            )
+    def save(self, summary: Summary, file_name: str = "summary.json") -> Path:
+        if not summary.run_dir:
+            raise SummaryPersistenceError("Missing run directory in Summary.")
 
-        summary_file_path = summary_data.run_dir / file_name
-        logger.info(f"Saving run summary to: {summary_file_path}")
+        path = summary.run_dir / file_name
+        logger.info(f"Saving run summary: {path}")
 
         try:
-            summary_file_path.parent.mkdir(parents=True, exist_ok=True)
-            summary_file_path.write_text(summary_data.model_dump_json(indent=2))
-            logger.info(f"Run summary saved successfully to {summary_file_path}.")
-            return summary_file_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(summary.model_dump_json(indent=2), encoding="utf-8")
         except Exception as e:
-            logger.error(
-                f"Failed to save summary to {summary_file_path}: {e}", exc_info=True
-            )
-            raise SummaryPersistenceError(
-                f"Could not save summary to {summary_file_path}: {e}"
-            ) from e
+            logger.exception(f"Failed to write summary: {path}")
+            raise SummaryPersistenceError(f"Could not save summary to {path}") from e
+
+        logger.info(f"Summary saved: {path}")
+        return path

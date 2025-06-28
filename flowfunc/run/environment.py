@@ -17,20 +17,15 @@ class RunEnvironmentManager:
     def __init__(self, config_file_path: Path | None = None) -> None:
         self._project_root = project_root()
         self._config_file_path = config_file_path
+
         try:
-            self.project_config: dict[str, Any] = load_flowfunc_toml(
-                config_file_path=self._config_file_path
-            )
+            self.project_config: dict[str, Any] = load_flowfunc_toml(config_file_path)
         except ConfigLoaderError as e:
-            logger.warning(
-                f"Could not load project configuration: {e}. Proceeding with default settings."
-            )
+            logger.warning(f"Config load failed: {e}. Using defaults.")
             self.project_config = {}
 
-        self.runs_base_dir_name: str = self.project_config.get(
-            "runs_directory", ".flowfunc_runs"
-        )
-        self.runs_base_dir: Path = self._project_root / self.runs_base_dir_name
+        runs_dir_name = self.project_config.get("runs_directory", ".flowfunc_runs")
+        self.runs_base_dir: Path = self._project_root / runs_dir_name
 
     def setup_run_directories(
         self, workflow_name: str, run_id: str
@@ -43,24 +38,19 @@ class RunEnvironmentManager:
         """
         if not workflow_name:
             raise RunEnvironmentManagerError(
-                "Workflow name cannot be empty for setting up run directories."
-            )
-        if not run_id:
-            raise RunEnvironmentManagerError(
-                "Run ID cannot be empty for setting up run directories."
+                "Workflow name and run ID must be provided."
             )
 
         try:
-            # Sanitize workflow_name for directory creation if needed
-            safe_workflow_name = workflow_name.replace(" ", "_").lower()
-            run_dir = self.runs_base_dir / safe_workflow_name / run_id
-            output_dir = run_dir / "outputs"  # Consistent with Summary.output_dir logic
+            safe_name = workflow_name.replace(" ", "_").lower()
+            run_dir = self.runs_base_dir / safe_name / run_id
+            output_dir = run_dir / "outputs"
 
-            ensure(run_dir)  # Creates directory if it doesn't exist
-            ensure(output_dir)  # Creates output directory
+            ensure(run_dir)
+            ensure(output_dir)
 
-            logger.info(f"Run directory set up at: {run_dir}")
-            logger.info(f"Output directory set up at: {output_dir}")
+            logger.info(f"Run dir: {run_dir}")
+            logger.info(f"Output dir: {output_dir}")
             return run_dir, output_dir
         except Exception as e:
             raise RunEnvironmentManagerError(
