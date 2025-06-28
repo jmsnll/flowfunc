@@ -121,7 +121,8 @@ class StepOptions(BaseModel):
     cache: bool | None = None
     mapspec: str | None = None
     scope: str | None = None
-    advanced_options: dict[str, Any] | None = None
+    resources: dict[str, Any] = Field(default_factory=dict)
+    advanced_options: dict[str, Any] | None = Field(default_factory=dict, exclude=True)
     map_mode: MapMode | None = Field(default=MapMode.BROADCAST, exclude=True)
 
     model_config = {"extra": "forbid"}
@@ -147,7 +148,7 @@ class WorkflowSpec(BaseModel):
     )
     inputs: dict[str, InputItem | str] | None = Field(default_factory=dict)
     outputs: dict[str, Path] | None = Field(default_factory=dict)
-    steps: list[StepDefinition] = Field(min_length=1)
+    steps: list[StepDefinition] = Field()
 
     model_config = {"extra": "forbid"}
 

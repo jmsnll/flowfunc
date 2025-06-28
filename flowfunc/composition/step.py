@@ -4,7 +4,6 @@ import string
 from typing import Any
 
 from flowfunc.exceptions import PipelineBuildError
-from flowfunc.utils.python import import_callable
 from flowfunc.workflow_definition import StepOptions
 from flowfunc.workflow_definition.schema import MapMode
 from flowfunc.workflow_definition.schema import StepDefinition
@@ -158,13 +157,11 @@ def resolve_mapspec(options: StepOptions, step: StepDefinition, **_) -> StepOpti
     if (map_mode := step.options.map_mode) == MapMode.NONE:
         return options
 
-
     if not step.inputs or not options.output_name:
         logger.debug(
             f"No mapspec generated, no inputs or outputs defined for step '{step.name}'"
         )
         return options
-
 
     iterable_inputs = {}
     constant_inputs = []
