@@ -1,15 +1,18 @@
-# Fixtures for shared objects
+from typing import Any
+
 import pytest
 
 from flowfunc.composition.step import resolve_defaults
-from flowfunc.composition.step import resolve_renames
+from flowfunc.composition.step import resolve_inputs
 from flowfunc.composition.step import resolve_resources
 from flowfunc.composition.step import resolve_scope
+from flowfunc.exceptions import PipelineBuildError
 from flowfunc.workflow_definition import Resources
 from flowfunc.workflow_definition import StepDefinition
 from flowfunc.workflow_definition import StepOptions
 from flowfunc.workflow_definition import WorkflowSpec
 from flowfunc.workflow_definition import WorkflowSpecOptions
+from flowfunc.workflow_definition.schema import InputItem
 from flowfunc.workflow_definition.schema import KindEnum
 from flowfunc.workflow_definition.schema import Metadata
 from flowfunc.workflow_definition.schema import WorkflowDefinition
@@ -32,46 +35,144 @@ def initial_options() -> StepOptions:
     return StepOptions()
 
 
-# Tests for resolve_renames
-def test_resolve_renames_with_global_inputs(initial_options):
+@pytest.fixture
+def rendering_context() -> dict[str, Any]:
+    """Provides a mock rendering context for Jinja2."""
+    return {
+        "globals": {"run_id": "run-xyz-123", "data_dir": "/data"},
+        "steps": {
+            "step_one": {
+                "outputs": {
+                    "raw_data": "step_one_raw_data_output",
+                    "processed_data": "step_one_processed_data_output",
+                }
+            }
+        },
+    }
+
+
+def test_resolve_inputs_no_inputs(
+    initial_options: StepOptions, rendering_context: dict[str, Any]
+):
+    step = StepDefinition(name="test_step", inputs=None)
+    options = resolve_inputs(initial_options, step, rendering_context)
+    assert options.renames == {}
+    assert options.defaults == {}
+
+
+def test_resolve_inputs_handles_literals_as_defaults(
+    initial_options: StepOptions, rendering_context: dict[str, Any]
+):
     step = StepDefinition(
         name="test_step",
         inputs={
-            "local_name": "$global.global_name",
-            "same_name": "$global.same_name",
-            "non_global": "another_step.output",
+            "path": "/absolute/path/file.txt",
+            "retries": 5,
+            "is_active": True,
         },
     )
-    options = resolve_renames(initial_options, step)
-    assert options.renames == {"local_name": "global_name"}
+    options = resolve_inputs(initial_options, step, rendering_context)
+
+    assert options.renames == {}
+    assert options.defaults == {
+        "path": "/absolute/path/file.txt",
+        "retries": 5,
+        "is_active": True,
+    }
 
 
-def test_resolve_renames_merges_with_existing(initial_options):
+def test_resolve_inputs_as_rename(
+    initial_options: StepOptions, rendering_context: dict[str, Any]
+):
     step = StepDefinition(
         name="test_step",
-        inputs={"new_input": "$global.new_global"},
+        inputs={"input_data": InputItem(value="{{ steps.step_one.outputs.raw_data }}")},
     )
-    initial_options.renames = {"existing": "old_global"}
-    options = resolve_renames(initial_options, step)
-    assert options.renames == {"existing": "old_global", "new_input": "new_global"}
+    options = resolve_inputs(initial_options, step, rendering_context)
+    assert options.renames == {"input_data": "step_one_raw_data_output"}
+    assert options.defaults == {}
 
 
-def test_resolve_renames_no_globals(initial_options):
+def test_resolve_inputs_as_default(
+    initial_options: StepOptions, rendering_context: dict[str, Any]
+):
     step = StepDefinition(
         name="test_step",
-        inputs={"input1": "step1.output", "input2": "step2.output"},
+        inputs={"output_path": "path/{{ globals.run_id }}/data.csv"},
     )
-    options = resolve_renames(initial_options, step)
-    assert not options.renames
+    options = resolve_inputs(initial_options, step, rendering_context)
+    assert options.defaults == {"output_path": "path/{{ globals.run_id }}/data.csv"}
+    assert options.renames == {"output_path": "path/run-xyz-123/data.csv"}
 
 
-def test_resolve_renames_no_inputs(initial_options):
-    step = StepDefinition(name="test_step")
-    options = resolve_renames(initial_options, step)
-    assert not options.renames
+def test_resolve_inputs_merges_with_existing_options(
+    initial_options: StepOptions, rendering_context: dict[str, Any]
+):
+    initial_options.renames = {"existing_rename": "source_one"}
+    initial_options.defaults = {"existing_default": "value1"}
+
+    step = StepDefinition(
+        name="test_step",
+        inputs={
+            "new_input": "{{ steps.step_one.outputs.processed_data }}",
+            "new_default": "config-{{ globals.run_id }}.json",
+        },
+    )
+    options = resolve_inputs(initial_options, step, rendering_context)
+
+    assert options.renames == {
+        "existing_rename": "source_one",
+        "new_input": "step_one_processed_data_output",
+        "new_default": "config-run-xyz-123.json",
+    }
+    assert options.defaults == {
+        "existing_default": "value1",
+        "new_default": "config-{{ globals.run_id }}.json",
+    }
 
 
-# Tests for resolve_defaults
+def test_resolve_inputs_raises_for_invalid_reference(
+    initial_options: StepOptions, rendering_context: dict[str, Any]
+):
+    step = StepDefinition(
+        name="test_step",
+        inputs={"bad_input": "{{ steps.non_existent.outputs.data }}"},
+    )
+
+    with pytest.raises(PipelineBuildError) as excinfo:
+        resolve_inputs(initial_options, step, rendering_context)
+
+    assert "In step 'test_step', input 'bad_input' has an invalid reference" in str(
+        excinfo.value
+    )
+    assert "non_existent" in str(excinfo.value)
+
+
+def test_resolve_inputs_handles_mixed_types(
+    initial_options: StepOptions, rendering_context: dict[str, Any]
+):
+    step = StepDefinition(
+        name="mixed_step",
+        inputs={
+            "direct_ref": "{{ steps.step_one.outputs.raw_data }}",
+            "interpolated_path": "{{ globals.data_dir }}/{{ globals.run_id }}",
+            "literal_string": "just-a-string",
+            "literal_int": 123,
+        },
+    )
+    options = resolve_inputs(initial_options, step, rendering_context)
+
+    assert options.renames == {
+        "direct_ref": "step_one_raw_data_output",
+        "interpolated_path": "/data/run-xyz-123",
+    }
+    assert options.defaults == {
+        "interpolated_path": "{{ globals.data_dir }}/{{ globals.run_id }}",
+        "literal_string": "just-a-string",
+        "literal_int": 123,
+    }
+
+
 def test_resolve_defaults_with_parameters(initial_options):
     step = StepDefinition(
         name="test_step", parameters={"param1": 100, "param2": "value"}
@@ -96,7 +197,6 @@ def test_resolve_defaults_no_parameters(initial_options):
     assert not options.defaults
 
 
-# Tests for resolve_resources
 def test_resolve_resources_merges_global_and_step(initial_options, empty_workflow):
     empty_workflow.spec.options = WorkflowSpecOptions(
         default_resources=Resources(cpus=2, memory="4Gi")
@@ -127,7 +227,6 @@ def test_resolve_resources_none_defined(initial_options, empty_workflow):
     assert not options.resources
 
 
-# Tests for resolve_scope
 def test_resolve_scope_from_step_options(initial_options):
     scope_name = "my_scope"
     step = StepDefinition(name="test_step", options=StepOptions(scope=scope_name))
