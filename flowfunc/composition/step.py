@@ -1,6 +1,5 @@
 import inspect
 import logging
-import re
 import string
 from typing import Any
 
