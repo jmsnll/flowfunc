@@ -158,7 +158,7 @@ class WorkflowRunCoordinator:
             return self.output_persister.persist(results, model, output_dir)
 
     def _handle_failure(self, error, tracker, run_id, summary, workflow_file_path):
-        if tracker and tracker._summary_data:
+        if tracker and tracker._summary:
             tracker.complete_run(Status.FAILED, str(error))
             return tracker.get_summary()
 
