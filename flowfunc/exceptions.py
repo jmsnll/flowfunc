@@ -58,7 +58,7 @@ class InputResolverError(FlowfuncError):
     pass
 
 
-class OutputPersisterError(FlowfuncError):
+class ArtifactPersistenceError(FlowfuncError):
     """Custom exception for output persisting errors."""
 
     pass

@@ -25,7 +25,7 @@ class Summary(BaseModel):
     end_time: datetime | None = None
     user_inputs: dict[str, Any] = Field(default_factory=dict)
     resolved_inputs: dict[str, Any] = Field(default_factory=dict)
-    persisted_outputs: dict[str, str] = Field(default_factory=dict)
+    artifacts: dict[str, str] = Field(default_factory=dict)
     run_dir: Path = Field(..., description="Directory of the current run.")
     error_message: str | None = None
 

@@ -27,5 +27,5 @@ spec:
         design_year: "{{ globals.creation_years }}"
       outputs: "character_roster"
 
-  outputs:
+  artifacts:
     character_roster: "final_roster.json"

@@ -57,5 +57,5 @@ spec:
       options:
         map_mode: "none"
 
-  outputs:
+  artifacts:
     result_summary: "final_sentiment_report.json"

@@ -10,10 +10,10 @@ from flowfunc.exceptions import FlowfuncError
 from flowfunc.exceptions import WorkflowRunError
 from flowfunc.pipeline.builder import PipelineBuilder
 from flowfunc.pipeline.executor import PipelineExecutor
+from flowfunc.run.artifact_persister import ArtifactPersister
 from flowfunc.run.environment import RunEnvironmentManager
 from flowfunc.run.input_provider import InputProvider
 from flowfunc.run.input_resolver import InputResolver
-from flowfunc.run.output_persister import OutputPersister
 from flowfunc.run.state_tracker import RunStateTracker
 from flowfunc.run.summary_model import Status
 from flowfunc.run.summary_model import Summary
@@ -38,7 +38,7 @@ class WorkflowRunCoordinator:
         input_provider: InputProvider | None = None,
         input_resolver: InputResolver | None = None,
         pipeline_executor: PipelineExecutor | None = None,
-        output_persister: OutputPersister | None = None,
+        artifact_persister: ArtifactPersister | None = None,
         summary_persister: SummaryPersister | None = None,
         reporter: ConsoleReporter | None = None,
         project_config_path: Path | None = None,
@@ -51,7 +51,7 @@ class WorkflowRunCoordinator:
         self.input_provider = input_provider or InputProvider()
         self.input_resolver = input_resolver or InputResolver()
         self.pipeline_executor = pipeline_executor or PipelineExecutor()
-        self.output_persister = output_persister or OutputPersister()
+        self.artifact_persister = artifact_persister or ArtifactPersister()
         self.summary_persister = summary_persister or SummaryPersister()
         self.reporter = reporter
 
@@ -90,10 +90,10 @@ class WorkflowRunCoordinator:
             pipeline_results = self._execute_pipeline(
                 pipeline, resolved_inputs, workflow_model
             )
-            outputs = self._persist_outputs(
+            outputs = self._persist_artifacts(
                 pipeline_results, workflow_model, summary.output_dir
             )
-            state_tracker.update_persisted_outputs(outputs)
+            state_tracker.update_artifacts(outputs)
 
             state_tracker.complete_run(Status.SUCCESS)
 
@@ -153,9 +153,9 @@ class WorkflowRunCoordinator:
         with self._report_status("Executing pipeline..."):
             return self.pipeline_executor.execute(pipeline, inputs, model.metadata.name)
 
-    def _persist_outputs(self, results, model, output_dir: Path):
-        with self._report_status("Persisting outputs..."):
-            return self.output_persister.persist(results, model, output_dir)
+    def _persist_artifacts(self, results, model, output_dir: Path):
+        with self._report_status("Persisting artifacts..."):
+            return self.artifact_persister.persist(results, model, output_dir)
 
     def _handle_failure(self, error, tracker, run_id, summary, workflow_file_path):
         if tracker and tracker._summary:
@@ -192,8 +192,8 @@ class WorkflowRunCoordinator:
             )
 
         if self.reporter:
-            if summary.persisted_outputs:
-                self.reporter.display_outputs_table(summary.persisted_outputs)
+            if summary.artifacts:
+                self.reporter.display_outputs_table(summary.artifacts)
             self.reporter.display_run_summary_panel(summary)
 
     def _report_status(self, message: str):

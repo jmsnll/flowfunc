@@ -34,5 +34,5 @@ spec:
       options:
         map_mode: "none"
 
-  outputs:
+  artifacts:
     final_summary: "pokemon_summary.json"

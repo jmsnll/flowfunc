@@ -21,5 +21,5 @@ spec:
         region: " {{ globals.regions }}"
       outputs: "health_status_grid"
 
-  outputs:
+  artifacts:
     health_status_grid: "health_check_summary.json"

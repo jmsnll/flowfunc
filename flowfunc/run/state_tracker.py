@@ -62,9 +62,9 @@ class RunStateTracker:
         self._require_summary().resolved_inputs = inputs
         logger.debug(f"Resolved inputs set for {self._run_id}")
 
-    def update_persisted_outputs(self, outputs: dict[str, str]) -> None:
-        self._require_summary().persisted_outputs = outputs
-        logger.info(f"Persisted outputs recorded for {self._run_id}")
+    def update_artifacts(self, artifacts: dict[str, str]) -> None:
+        self._require_summary().artifacts = artifacts
+        logger.info(f"Artifacts recorded for {self._run_id}")
 
     def get_summary(self) -> Summary:
         return self._require_summary()

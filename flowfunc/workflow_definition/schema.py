@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class KindEnum(str, Enum):
     PIPELINE = "Pipeline"
+    WORKFLOW = "Workflow"
 
 
 class InputTypeEnum(str, Enum):
@@ -147,7 +148,7 @@ class WorkflowSpec(BaseModel):
         default_factory=WorkflowSpecOptions
     )
     inputs: dict[str, InputItem | str] | None = Field(default_factory=dict)
-    outputs: dict[str, Path] | None = Field(default_factory=dict)
+    artifacts: dict[str, Path] | None = Field(default_factory=dict)
     steps: list[StepDefinition] = Field()
 
     model_config = {"extra": "forbid"}
