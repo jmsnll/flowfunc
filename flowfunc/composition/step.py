@@ -85,7 +85,6 @@ def resolve_inputs(
 
             template = _JINJA_ENV.from_string(input_value)
             render = template.render(rendering_context)
-            # new_defaults[name] = render
             new_renames[name] = render
 
         except jinja2.UndefinedError as e:
@@ -177,45 +176,6 @@ def validate_step_inputs(
         )
 
     return options
-
-
-def resolve_defaults(
-    options: StepOptions, step: StepDefinition, rendering_context: dict[str, Any], **_
-) -> StepOptions:
-    """Resolves input defaults from step parameters."""
-    if not step.params:
-        return options
-    #
-    # new_defaults: dict[str, Any] = {}
-    #
-    # for name, input_item in step.params.items():
-    #     try:
-    #         input_value = (
-    #             input_item.value if hasattr(input_item, "value") else input_item
-    #         )
-    #
-    #         if not is_jinja_template(input_value):
-    #             new_defaults[name] = input_value
-    #             continue
-    #
-    #         template = _JINJA_ENV.from_string(input_value)
-    #         render = template.render(rendering_context)
-    #         new_defaults[name] = render
-    #
-    #     except jinja2.UndefinedError as e:
-    #         raise PipelineBuildError(
-    #             f"In step '{step.name}', input '{name}' has an invalid reference. "
-    #             f"The expression '{input_item}' references an unknown variable: {e}"
-    #         ) from e
-    #     except Exception as e:
-    #         raise PipelineBuildError(
-    #             f"In step '{step.name}', a critical error occurred while rendering input '{name}' "
-    #             f"with template '{input_item}'. Details: {e}"
-    #         ) from e
-    return options
-    # return options.model_copy(
-    #     update={"defaults": {**options.defaults, **new_defaults}}
-    # )
 
 
 def resolve_resources(
@@ -332,7 +292,6 @@ ALL = [
     resolve_callable,
     resolve_inputs,
     validate_step_inputs,
-    resolve_defaults,
     resolve_resources,
     resolve_scope,
     resolve_mapspec,

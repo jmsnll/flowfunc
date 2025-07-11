@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 DEPENDENCY_STRING_PATTERN = re.compile(
     r"^{{\s*steps\.([a-z0-9_]+)\.produces\.(\w+)\s*}}$"
 )
+DEFAULT_RETRY_EXCEPTIONS = [
+    "requests.exceptions.ConnectionError",
+    "requests.exceptions.Timeout",
+]
 
 
 class KindEnum(str, Enum):
@@ -64,6 +68,28 @@ class Resources(BaseModel):
                     f"Key '{key}' is a reserved field and cannot be used in 'advanced_options'."
                     f"Please set '{key}' at the top level of resources."
                 )
+        return v
+
+
+class RetryOptions(BaseModel):
+    max_attempts: int = Field(
+        default=1, ge=1, description="The maximum number of times to run the step."
+    )
+    wait_exponential_multiplier: int = Field(
+        default=1.5, description="The multiplier for exponential backoff (in seconds)."
+    )
+    wait_exponential_max: int = Field(
+        default=60, description="The maximum wait time between retries (in seconds)."
+    )
+    retry_on_exceptions: list[str] = Field(
+        default_factory=lambda: DEFAULT_RETRY_EXCEPTIONS,
+        description="A list of exception type names that should trigger a retry.",
+    )
+
+    @field_validator("max_attempts")
+    def attempts_must_be_positive(cls, v):
+        if v < 1:
+            raise ValueError("max_attempts must be 1 or greater.")
         return v
 
 
@@ -143,6 +169,7 @@ class StepDefinition(BaseModel):
     produces: str | list[str] | None = None
     resources: Resources | None = None
     options: StepOptions | None = Field(default_factory=StepOptions)
+    retries: RetryOptions | None = None
 
     @field_validator("consumes")
     @classmethod
