@@ -32,7 +32,7 @@ class PipelineBuilder:
         logger.info(f"Building pipeline for workflow: '{name}'")
 
         rendering_context: dict[str, Any] = {
-            "globals": {name: name for name in workflow.spec.inputs.keys()},
+            "params": {name: name for name in workflow.spec.params},
             "steps": {},
         }
 
@@ -67,7 +67,7 @@ class PipelineBuilder:
                     for out_name in output_names:
                         outputs_map[out_name] = f"{out_name}"
 
-                    rendering_context["steps"][step.name] = {"outputs": outputs_map}
+                    rendering_context["steps"][step.name] = {"produces": outputs_map}
 
                 func_kwargs = final_options.model_dump(
                     exclude_unset=True, exclude_none=True
@@ -75,10 +75,7 @@ class PipelineBuilder:
                 funcs.append(pipefunc.PipeFunc(**func_kwargs))
 
             except Exception as e:
-                logger.exception(f"Error in step '{step.name}': {e}")
                 raise PipelineBuildError(f"Step '{step.name}' failed") from e
-
-        pipeline_kwargs = self._pipeline_chain({}, workflow=workflow)
 
         try:
             pipeline_kwargs = self._pipeline_chain({}, workflow=workflow)
@@ -87,5 +84,4 @@ class PipelineBuilder:
             )
             return pipefunc.Pipeline(funcs, **pipeline_kwargs)
         except Exception as e:
-            logger.exception(f"Failed to build final pipeline for '{name}': {e}")
             raise PipelineBuildError(f"Failed to build pipeline for '{name}'") from e

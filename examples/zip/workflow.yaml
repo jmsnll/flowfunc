@@ -5,7 +5,7 @@ metadata:
 spec:
   default_module: examples.zip.character_builder
 
-  inputs:
+  params:
     character_names:
       value: ["Astra", "Gideon", "Seraphina", "Kael"]
     character_archetypes:
@@ -20,12 +20,12 @@ spec:
       description: "Builds a structured profile for each character by zipping four lists."
       options:
         map_mode: zip
-      inputs:
+      params:
         name: "{{ globals.character_names }}"
         archetype: "{{ globals.character_archetypes }}"
         power_level: "{{ globals.power_levels }}"
         design_year: "{{ globals.creation_years }}"
-      outputs: "character_roster"
+      produces: "character_roster"
 
   artifacts:
-    character_roster: "final_roster.json"
+    "final_roster.json": "{{ steps.create_character_profile.produces.character_roster }}"

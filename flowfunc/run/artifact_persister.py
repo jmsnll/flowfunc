@@ -79,7 +79,7 @@ class ArtifactPersister:
         """Converts non-standard types (e.g., NumPy) into Python-native types."""
         if isinstance(data, np.ndarray):
             return data.tolist()
-        if isinstance(data, (np.integer, np.floating, np.bool_)):
+        if isinstance(data, np.integer | np.floating | np.bool_):
             return data.item()
         if isinstance(data, list):
             return [self._prepare_data_for_serialization(d) for d in data]

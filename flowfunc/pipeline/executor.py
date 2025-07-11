@@ -23,9 +23,6 @@ class PipelineExecutor:
             logger.info(f"Pipeline '{name}' execution completed.")
             return results
         except Exception as e:
-            logger.error(
-                f"Error during pipeline execution '{name}': {e}", exc_info=True
-            )
             raise PipelineExecutionError(
                 f"Pipeline execution failed for '{name}': {e}"
             ) from e

@@ -30,8 +30,8 @@ def resolve_output_name(options: StepOptions, step: StepDefinition, **_) -> Step
     if options.output_name:
         return options
 
-    if step.outputs:
-        output_name = step.outputs
+    if step.produces:
+        output_name = step.produces
     elif step.name:
         output_name = step.name
     else:
@@ -67,13 +67,41 @@ def resolve_inputs(
     - An interpolated string `path/{{ globals.run_id }}` or literal becomes a `default`.
     - Per tests, an interpolated string is also rendered and added to `renames`.
     """
-    if not step.inputs:
+    if not step.consumes and not step.params:
         return options
 
     new_renames: dict[str, Any] = {}
     new_defaults: dict[str, Any] = {}
 
-    for name, input_item in step.inputs.items():
+    for name, input_item in step.params.items():
+        try:
+            input_value = (
+                input_item.value if hasattr(input_item, "value") else input_item
+            )
+
+            if not is_jinja_template(input_value):
+                new_defaults[name] = input_value
+                continue
+
+            template = _JINJA_ENV.from_string(input_value)
+            render = template.render(rendering_context)
+            # new_defaults[name] = render
+            new_renames[name] = render
+
+        except jinja2.UndefinedError as e:
+            raise PipelineBuildError(
+                f"In step '{step.name}', input '{name}' has an invalid reference. "
+                f"The expression '{input_item}' references an unknown variable: {e}"
+            ) from e
+        except Exception as e:
+            raise PipelineBuildError(
+                f"In step '{step.name}', a critical error occurred while rendering input '{name}' "
+                f"with template '{input_item}'. Details: {e}"
+            ) from e
+
+
+
+    for name, input_item in step.consumes.items():
         try:
             input_value = (
                 input_item.value if hasattr(input_item, "value") else input_item
@@ -131,7 +159,7 @@ def validate_step_inputs(
         return options
 
     func_params = set(signature.parameters.keys())
-    provided_args = set(step.inputs.keys()) | set(step.parameters.keys())
+    provided_args = set(step.consumes.keys()) | set(step.params.keys())
     unknown_args = provided_args - func_params
     if unknown_args:
         raise PipelineBuildError(
@@ -153,13 +181,41 @@ def validate_step_inputs(
     return options
 
 
-def resolve_defaults(options: StepOptions, step: StepDefinition, **_) -> StepOptions:
+def resolve_defaults(options: StepOptions, step: StepDefinition, rendering_context: dict[str, Any], **_) -> StepOptions:
     """Resolves input defaults from step parameters."""
-    if not step.parameters:
+    if not step.params:
         return options
-    return options.model_copy(
-        update={"defaults": {**options.defaults, **step.parameters}}
-    )
+    #
+    # new_defaults: dict[str, Any] = {}
+    #
+    # for name, input_item in step.params.items():
+    #     try:
+    #         input_value = (
+    #             input_item.value if hasattr(input_item, "value") else input_item
+    #         )
+    #
+    #         if not is_jinja_template(input_value):
+    #             new_defaults[name] = input_value
+    #             continue
+    #
+    #         template = _JINJA_ENV.from_string(input_value)
+    #         render = template.render(rendering_context)
+    #         new_defaults[name] = render
+    #
+    #     except jinja2.UndefinedError as e:
+    #         raise PipelineBuildError(
+    #             f"In step '{step.name}', input '{name}' has an invalid reference. "
+    #             f"The expression '{input_item}' references an unknown variable: {e}"
+    #         ) from e
+    #     except Exception as e:
+    #         raise PipelineBuildError(
+    #             f"In step '{step.name}', a critical error occurred while rendering input '{name}' "
+    #             f"with template '{input_item}'. Details: {e}"
+    #         ) from e
+    return options
+    # return options.model_copy(
+    #     update={"defaults": {**options.defaults, **new_defaults}}
+    # )
 
 
 def resolve_resources(

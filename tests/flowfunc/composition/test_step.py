@@ -53,8 +53,8 @@ def rendering_context() -> dict[str, Any]:
 
 def test_resolve_inputs_no_inputs(
     initial_options: StepOptions, rendering_context: dict[str, Any]
-):
-    step = StepDefinition(name="test_step", inputs=None)
+) -> None:
+    step = StepDefinition(name="test_step", consumes=None)
     options = resolve_inputs(initial_options, step, rendering_context)
     assert options.renames == {}
     assert options.defaults == {}
@@ -62,10 +62,10 @@ def test_resolve_inputs_no_inputs(
 
 def test_resolve_inputs_handles_literals_as_defaults(
     initial_options: StepOptions, rendering_context: dict[str, Any]
-):
+) -> None:
     step = StepDefinition(
         name="test_step",
-        inputs={
+        consumes={
             "path": "/absolute/path/file.txt",
             "retries": 5,
             "is_active": True,
@@ -83,10 +83,12 @@ def test_resolve_inputs_handles_literals_as_defaults(
 
 def test_resolve_inputs_as_rename(
     initial_options: StepOptions, rendering_context: dict[str, Any]
-):
+) -> None:
     step = StepDefinition(
         name="test_step",
-        inputs={"input_data": InputItem(value="{{ steps.step_one.outputs.raw_data }}")},
+        consumes={
+            "input_data": InputItem(value="{{ steps.step_one.outputs.raw_data }}")
+        },
     )
     options = resolve_inputs(initial_options, step, rendering_context)
     assert options.renames == {"input_data": "step_one_raw_data_output"}
@@ -95,10 +97,10 @@ def test_resolve_inputs_as_rename(
 
 def test_resolve_inputs_as_default(
     initial_options: StepOptions, rendering_context: dict[str, Any]
-):
+) -> None:
     step = StepDefinition(
         name="test_step",
-        inputs={"output_path": "path/{{ globals.run_id }}/data.csv"},
+        consumes={"output_path": "path/{{ globals.run_id }}/data.csv"},
     )
     options = resolve_inputs(initial_options, step, rendering_context)
     assert options.defaults == {"output_path": "path/{{ globals.run_id }}/data.csv"}
@@ -107,13 +109,13 @@ def test_resolve_inputs_as_default(
 
 def test_resolve_inputs_merges_with_existing_options(
     initial_options: StepOptions, rendering_context: dict[str, Any]
-):
+) -> None:
     initial_options.renames = {"existing_rename": "source_one"}
     initial_options.defaults = {"existing_default": "value1"}
 
     step = StepDefinition(
         name="test_step",
-        inputs={
+        consumes={
             "new_input": "{{ steps.step_one.outputs.processed_data }}",
             "new_default": "config-{{ globals.run_id }}.json",
         },
@@ -133,10 +135,10 @@ def test_resolve_inputs_merges_with_existing_options(
 
 def test_resolve_inputs_raises_for_invalid_reference(
     initial_options: StepOptions, rendering_context: dict[str, Any]
-):
+) -> None:
     step = StepDefinition(
         name="test_step",
-        inputs={"bad_input": "{{ steps.non_existent.outputs.data }}"},
+        consumes={"bad_input": "{{ steps.non_existent.outputs.data }}"},
     )
 
     with pytest.raises(PipelineBuildError) as excinfo:
@@ -150,10 +152,10 @@ def test_resolve_inputs_raises_for_invalid_reference(
 
 def test_resolve_inputs_handles_mixed_types(
     initial_options: StepOptions, rendering_context: dict[str, Any]
-):
+) -> None:
     step = StepDefinition(
         name="mixed_step",
-        inputs={
+        consumes={
             "direct_ref": "{{ steps.step_one.outputs.raw_data }}",
             "interpolated_path": "{{ globals.data_dir }}/{{ globals.run_id }}",
             "literal_string": "just-a-string",
@@ -173,16 +175,16 @@ def test_resolve_inputs_handles_mixed_types(
     }
 
 
-def test_resolve_defaults_with_parameters(initial_options):
+def test_resolve_defaults_with_parameters(initial_options) -> None:
     step = StepDefinition(
-        name="test_step", parameters={"param1": 100, "param2": "value"}
+        name="test_step", params={"param1": 100, "param2": "value"}
     )
     options = resolve_defaults(initial_options, step)
     assert options.defaults == {"param1": 100, "param2": "value"}
 
 
-def test_resolve_defaults_merges_with_existing(initial_options):
-    step = StepDefinition(name="test_step", parameters={"new_param": "new_value"})
+def test_resolve_defaults_merges_with_existing(initial_options) -> None:
+    step = StepDefinition(name="test_step", params={"new_param": "new_value"})
     initial_options.defaults = {"existing_param": "old_value"}
     options = resolve_defaults(initial_options, step)
     assert options.defaults == {
@@ -191,13 +193,13 @@ def test_resolve_defaults_merges_with_existing(initial_options):
     }
 
 
-def test_resolve_defaults_no_parameters(initial_options):
+def test_resolve_defaults_no_parameters(initial_options) -> None:
     step = StepDefinition(name="test_step")
     options = resolve_defaults(initial_options, step)
     assert not options.defaults
 
 
-def test_resolve_resources_merges_global_and_step(initial_options, empty_workflow):
+def test_resolve_resources_merges_global_and_step(initial_options, empty_workflow) -> None:
     empty_workflow.spec.options = WorkflowSpecOptions(
         default_resources=Resources(cpus=2, memory="4Gi")
     )
@@ -206,7 +208,7 @@ def test_resolve_resources_merges_global_and_step(initial_options, empty_workflo
     assert options.resources == {"cpus": 2, "memory": "8Gi"}
 
 
-def test_resolve_resources_only_global(initial_options, empty_workflow):
+def test_resolve_resources_only_global(initial_options, empty_workflow) -> None:
     empty_workflow.spec.options = WorkflowSpecOptions(
         default_resources=Resources(cpus=4)
     )
@@ -215,32 +217,32 @@ def test_resolve_resources_only_global(initial_options, empty_workflow):
     assert options.resources == {"cpus": 4}
 
 
-def test_resolve_resources_only_step(initial_options, empty_workflow):
+def test_resolve_resources_only_step(initial_options, empty_workflow) -> None:
     step = StepDefinition(name="test_step", resources=Resources(memory="16Gi"))
     options = resolve_resources(initial_options, step, workflow=empty_workflow)
     assert options.resources == {"memory": "16Gi"}
 
 
-def test_resolve_resources_none_defined(initial_options, empty_workflow):
+def test_resolve_resources_none_defined(initial_options, empty_workflow) -> None:
     step = StepDefinition(name="test_step")
     options = resolve_resources(initial_options, step, workflow=empty_workflow)
     assert not options.resources
 
 
-def test_resolve_scope_from_step_options(initial_options):
+def test_resolve_scope_from_step_options(initial_options) -> None:
     scope_name = "my_scope"
     step = StepDefinition(name="test_step", options=StepOptions(scope=scope_name))
     options = resolve_scope(initial_options, step)
     assert options.scope == scope_name
 
 
-def test_resolve_scope_not_defined(initial_options):
+def test_resolve_scope_not_defined(initial_options) -> None:
     step = StepDefinition(name="test_step")
     options = resolve_scope(initial_options, step)
     assert options.scope is None
 
 
-def test_resolve_scope_is_none_in_options(initial_options):
+def test_resolve_scope_is_none_in_options(initial_options) -> None:
     step = StepDefinition(name="test_step", options=StepOptions(scope=None))
     options = resolve_scope(initial_options, step)
     assert options.scope is None

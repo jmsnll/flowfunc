@@ -7,7 +7,7 @@ metadata:
 spec:
   default_module: examples.pokemon_analysis.main
 
-  inputs:
+  params:
     pokemon_ids:
       description: "A list of Pokémon IDs to fetch."
       type: "list"
@@ -16,23 +16,23 @@ spec:
   steps:
     - name: "fetch_pokemon_data"
       description: "Fetches raw data for each Pokémon ID in parallel."
-      inputs:
-        pokemon_id: "{{ globals.pokemon_ids }}"
-      outputs: "pokemon_data"
+      params:
+        pokemon_id: "{{ params.pokemon_ids }}"
+      produces: "pokemon_data"
 
     - name: "extract_basic_stats"
       description: "Extracts key stats from the raw data for each Pokémon."
-      inputs:
-        pokemon_data: "{{ steps.fetch_pokemon_data.outputs.pokemon_data }}"
-      outputs: "all_stats"
+      consumes:
+        pokemon_data: "{{ steps.fetch_pokemon_data.produces.pokemon_data }}"
+      produces: "all_stats"
 
     - name: "summarize_pokemon_stats"
       description: "Aggregates the individual stats into a single summary."
-      inputs:
-        all_stats: "{{ steps.extract_basic_stats.outputs.all_stats }}"
-      outputs: "final_summary"
+      consumes:
+        all_stats: "{{ steps.extract_basic_stats.produces.all_stats }}"
+      produces: "final_summary"
       options:
         map_mode: "none"
 
   artifacts:
-    final_summary: "pokemon_summary.json"
+    "pokemon_summary.json": "{{ steps.summarize_pokemon_stats.produces.final_summary }}"

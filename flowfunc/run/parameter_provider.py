@@ -8,11 +8,11 @@ from flowfunc.exceptions import InputProviderError
 logger = logging.getLogger(__name__)
 
 
-class InputProvider:
-    """Loads user inputs from a JSON file or string."""
+class ParameterProvider:
+    """Loads user params from a JSON file or string."""
 
     def load_from_file(self, file_path: Path) -> dict[str, Any]:
-        logger.info(f"Loading inputs from: {file_path}")
+        logger.info(f"Loading params from: {file_path}")
 
         if not file_path.is_file():
             raise InputProviderError(f"Invalid input file: {file_path}")
@@ -34,7 +34,7 @@ class InputProvider:
         return data
 
     def load_from_json_string(self, json_string: str) -> dict[str, Any]:
-        logger.info("Loading inputs from JSON string.")
+        logger.info("Loading params from JSON string.")
 
         if not json_string:
             logger.warning("Empty JSON string provided. Returning empty dict.")

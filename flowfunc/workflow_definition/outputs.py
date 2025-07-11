@@ -46,9 +46,7 @@ def persist(
 
 
 def _serialize_output(data: Any, name: str, path: Path) -> str:
-    """
-    Serializes and saves one output. Returns relative path from project root.
-    """
+    """Serializes and saves one output. Returns relative path from project root."""
     suffix = path.suffix.lower()
     project_root = locations.project_root()
 

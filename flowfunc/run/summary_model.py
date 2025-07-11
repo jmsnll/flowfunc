@@ -23,8 +23,8 @@ class Summary(BaseModel):
     status: Status = Field(default=Status.PENDING, description="Final run status.")
     start_time: datetime = Field(default_factory=lambda: datetime.now(UTC))
     end_time: datetime | None = None
-    user_inputs: dict[str, Any] = Field(default_factory=dict)
-    resolved_inputs: dict[str, Any] = Field(default_factory=dict)
+    user_params: dict[str, Any] = Field(default_factory=dict)
+    resolved_params: dict[str, Any] = Field(default_factory=dict)
     artifacts: dict[str, str] = Field(default_factory=dict)
     run_dir: Path = Field(..., description="Directory of the current run.")
     error_message: str | None = None

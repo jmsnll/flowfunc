@@ -40,7 +40,6 @@ class RunStateTracker:
 
         logger.info(f"Run started: {self._run_id} ({workflow_name})")
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Output directory: {self.output_dir}")
 
     def complete_run(self, status: Status, error: str | None = None) -> None:
         summary = self._require_summary()
@@ -54,13 +53,13 @@ class RunStateTracker:
             msg += f" in {duration:.2f}s"
         logger.info(msg)
 
-    def update_user_inputs(self, inputs: dict[str, Any]) -> None:
-        self._require_summary().user_inputs = inputs
-        logger.debug(f"User inputs set for {self._run_id}")
+    def update_user_params(self, inputs: dict[str, Any]) -> None:
+        self._require_summary().user_params = inputs
+        logger.debug(f"User params set for {self._run_id}")
 
-    def update_resolved_inputs(self, inputs: dict[str, Any]) -> None:
-        self._require_summary().resolved_inputs = inputs
-        logger.debug(f"Resolved inputs set for {self._run_id}")
+    def update_resolved_params(self, inputs: dict[str, Any]) -> None:
+        self._require_summary().resolved_params = inputs
+        logger.debug(f"Resolved params set for {self._run_id}")
 
     def update_artifacts(self, artifacts: dict[str, str]) -> None:
         self._require_summary().artifacts = artifacts

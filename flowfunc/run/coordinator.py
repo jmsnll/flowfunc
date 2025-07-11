@@ -12,8 +12,8 @@ from flowfunc.pipeline.builder import PipelineBuilder
 from flowfunc.pipeline.executor import PipelineExecutor
 from flowfunc.run.artifact_persister import ArtifactPersister
 from flowfunc.run.environment import RunEnvironmentManager
-from flowfunc.run.input_provider import InputProvider
-from flowfunc.run.input_resolver import InputResolver
+from flowfunc.run.parameter_provider import ParameterProvider
+from flowfunc.run.parameter_resolver import ParameterResolver
 from flowfunc.run.state_tracker import RunStateTracker
 from flowfunc.run.summary_model import Status
 from flowfunc.run.summary_model import Summary
@@ -35,8 +35,8 @@ class WorkflowRunCoordinator:
         definition_loader: WorkflowDefinitionLoader | None = None,
         pipeline_builder: PipelineBuilder | None = None,
         env_manager: RunEnvironmentManager | None = None,
-        input_provider: InputProvider | None = None,
-        input_resolver: InputResolver | None = None,
+        param_provider: ParameterProvider | None = None,
+        param_resolver: ParameterResolver | None = None,
         pipeline_executor: PipelineExecutor | None = None,
         artifact_persister: ArtifactPersister | None = None,
         summary_persister: SummaryPersister | None = None,
@@ -48,8 +48,8 @@ class WorkflowRunCoordinator:
         self.env_manager = env_manager or RunEnvironmentManager(
             config_file_path=project_config_path
         )
-        self.input_provider = input_provider or InputProvider()
-        self.input_resolver = input_resolver or InputResolver()
+        self.param_provider = param_provider or ParameterProvider()
+        self.param_resolver = param_resolver or ParameterResolver()
         self.pipeline_executor = pipeline_executor or PipelineExecutor()
         self.artifact_persister = artifact_persister or ArtifactPersister()
         self.summary_persister = summary_persister or SummaryPersister()
@@ -79,16 +79,16 @@ class WorkflowRunCoordinator:
             summary = state_tracker.get_summary()
 
             pipeline = self._build_pipeline(workflow_model)
-            raw_user_inputs = self._get_inputs(input_file_path, input_data)
-            state_tracker.update_user_inputs(raw_user_inputs)
+            user_provided_params = self._get_params(input_file_path, input_data)
+            state_tracker.update_user_params(user_provided_params)
 
-            resolved_inputs = self._resolve_inputs(
-                pipeline, workflow_model, raw_user_inputs
+            resolved_params = self._resolve_params(
+                pipeline, workflow_model, user_provided_params
             )
-            state_tracker.update_resolved_inputs(resolved_inputs)
+            state_tracker.update_resolved_params(resolved_params)
 
             pipeline_results = self._execute_pipeline(
-                pipeline, resolved_inputs, workflow_model
+                pipeline, resolved_params, workflow_model
             )
             outputs = self._persist_artifacts(
                 pipeline_results, workflow_model, summary.output_dir
@@ -127,23 +127,23 @@ class WorkflowRunCoordinator:
         with self._report_status("Building pipeline..."):
             return self.pipeline_builder.build(model)
 
-    def _get_inputs(
-        self, input_file_path: Path | None, input_data: dict[str, Any] | None
+    def _get_params(
+        self, param_file_path: Path | None, param_data: dict[str, Any] | None
     ):
-        if input_file_path:
-            with self._report_status(f"Loading inputs from file: {input_file_path}..."):
-                return self.input_provider.load_from_file(input_file_path)
-        if input_data is not None:
-            logger.info("Using directly provided input data.")
-            return input_data
-        logger.info("No input file or data provided. Proceeding with defaults if any.")
+        if param_file_path:
+            with self._report_status(f"Loading params from file: {param_file_path}..."):
+                return self.param_provider.load_from_file(param_file_path)
+        if param_data is not None:
+            logger.info("Using directly provided param data.")
+            return param_data
+        logger.info("No param file or data provided. Proceeding with defaults if any.")
         return {}
 
-    def _resolve_inputs(self, pipeline, model, user_inputs):
+    def _resolve_params(self, pipeline, model, user_inputs):
         with self._report_status("Resolving inputs..."):
             info = pipeline.info()
-            return self.input_resolver.resolve(
-                user_inputs=user_inputs,
+            return self.param_resolver.resolve(
+                user_params=user_inputs,
                 workflow_model=model,
                 pipeline_inputs=info.get("inputs", []),
                 pipeline_required_inputs=info.get("required_inputs", []),
@@ -178,7 +178,7 @@ class WorkflowRunCoordinator:
             end_time=datetime.now(UTC),
         )
 
-    def _finalize(self, summary: Summary | None, run_id: str):
+    def _finalize(self, summary: Summary | None, run_id: str) -> None:
         if not summary:
             logger.error(f"No summary data available for run '{run_id}'")
             return
