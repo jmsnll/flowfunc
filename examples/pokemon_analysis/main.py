@@ -7,7 +7,6 @@ import requests
 def fetch_pokemon_data(pokemon_id: int) -> dict[str, Any]:
     """Fetches data for a single Pokémon from the PokéAPI."""
     url = f"https://pokeapi.co/api/v2/pokemon/{pokemon_id}"
-    print(f"Fetching data for Pokémon ID: {pokemon_id}")
 
     fields_to_keep = {
         "id",
@@ -32,7 +31,6 @@ def extract_basic_stats(pokemon_data: dict[str, Any]) -> dict[str, Any]:
         return {}  # Skip if data is empty from a failed fetch
 
     name = pokemon_data.get("name", "Unknown")
-    print(f"Extracting stats for: {name.capitalize()}")
 
     # Get the first type from the 'types' list
     primary_type = "none"
@@ -50,8 +48,6 @@ def extract_basic_stats(pokemon_data: dict[str, Any]) -> dict[str, Any]:
 
 def summarize_pokemon_stats(all_stats: np.ndarray) -> dict[str, Any]:
     """Aggregates all the extracted stats into a final summary."""
-    print("Aggregating all Pokémon stats...")
-
     # Filter out any empty results from failed API calls
     valid_stats = [s for s in all_stats if s]
 
