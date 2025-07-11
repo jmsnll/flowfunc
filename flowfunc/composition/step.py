@@ -99,8 +99,6 @@ def resolve_inputs(
                 f"with template '{input_item}'. Details: {e}"
             ) from e
 
-
-
     for name, input_item in step.consumes.items():
         try:
             input_value = (
@@ -181,7 +179,9 @@ def validate_step_inputs(
     return options
 
 
-def resolve_defaults(options: StepOptions, step: StepDefinition, rendering_context: dict[str, Any], **_) -> StepOptions:
+def resolve_defaults(
+    options: StepOptions, step: StepDefinition, rendering_context: dict[str, Any], **_
+) -> StepOptions:
     """Resolves input defaults from step parameters."""
     if not step.params:
         return options

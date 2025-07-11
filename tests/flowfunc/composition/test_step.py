@@ -176,9 +176,7 @@ def test_resolve_inputs_handles_mixed_types(
 
 
 def test_resolve_defaults_with_parameters(initial_options) -> None:
-    step = StepDefinition(
-        name="test_step", params={"param1": 100, "param2": "value"}
-    )
+    step = StepDefinition(name="test_step", params={"param1": 100, "param2": "value"})
     options = resolve_defaults(initial_options, step)
     assert options.defaults == {"param1": 100, "param2": "value"}
 
@@ -199,7 +197,9 @@ def test_resolve_defaults_no_parameters(initial_options) -> None:
     assert not options.defaults
 
 
-def test_resolve_resources_merges_global_and_step(initial_options, empty_workflow) -> None:
+def test_resolve_resources_merges_global_and_step(
+    initial_options, empty_workflow
+) -> None:
     empty_workflow.spec.options = WorkflowSpecOptions(
         default_resources=Resources(cpus=2, memory="4Gi")
     )

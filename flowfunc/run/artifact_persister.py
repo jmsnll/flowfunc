@@ -38,9 +38,7 @@ class ArtifactPersister:
                 ) from e
 
         # Resolve artifacts using shared resolver
-        resolved_artifacts = resolve_artifacts(
-            workflow_model, results
-        )
+        resolved_artifacts = resolve_artifacts(workflow_model, results)
 
         manifest: dict[str, str] = {}
 
@@ -58,7 +56,9 @@ class ArtifactPersister:
                 manifest[artifact_name] = str(target_path)
                 logger.info(f"Persisted '{artifact_name}' → {target_path}")
             except ArtifactPersistenceError:
-                logger.exception(f"Failed to serialize '{artifact_name}' → {target_path}")
+                logger.exception(
+                    f"Failed to serialize '{artifact_name}' → {target_path}"
+                )
             except OSError as e:
                 logger.error(
                     f"Dir creation failed for '{artifact_name}' at {target_path.parent}: {e}",
