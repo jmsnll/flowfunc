@@ -9,6 +9,7 @@ from flowfunc.exceptions import SerializerError as IOSerializerError
 from flowfunc.io.serializer import Serializer as IOSerializer
 from flowfunc.io.serializer import lookup_serializer
 from flowfunc.workflow_definition.schema import WorkflowDefinition
+from flowfunc.composition.utils import resolve_artifacts
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class ArtifactPersister:
         workflow_model: WorkflowDefinition,
         artifact_dir: Path,
     ) -> dict[str, str]:
-        declared_artifacts: dict[str, Path] | None = workflow_model.spec.artifacts
+        declared_artifacts: dict[str, str] | None = workflow_model.spec.artifacts
         if not declared_artifacts:
             logger.info("No artifacts defined; skipping persistence.")
             return {}
@@ -36,40 +37,36 @@ class ArtifactPersister:
                     f"Cannot create output dir {artifact_dir}: {e}"
                 ) from e
 
-        scope = getattr(workflow_model.spec.options, "scope", None)
+        # Resolve artifacts using shared resolver
+        resolved_artifacts = resolve_artifacts(
+            workflow_model, results
+        )
+
         manifest: dict[str, str] = {}
 
         logger.info(f"Persisting artifacts to: {artifact_dir}")
 
-        for name, rel_path in declared_artifacts.items():
-            result_key = f"{scope}.{name}" if scope else name
-            if result_key not in results:
-                logger.warning(f"Result key '{result_key}' missing; skipping '{name}'.")
-                continue
-
-            target_path = (
-                rel_path
-                if rel_path.is_absolute()
-                else (artifact_dir / rel_path).resolve()
-            )
-            data = self._prepare_data_for_serialization(results[result_key].output)
+        for artifact_name, artifact_data in resolved_artifacts.items():
+            # Use the artifact name as the filename
+            target_path = artifact_dir / artifact_name
+            data = self._prepare_data_for_serialization(artifact_data)
 
             try:
                 target_path.parent.mkdir(parents=True, exist_ok=True)
-                logger.debug(f"Persisting '{name}' to: {target_path}")
+                logger.debug(f"Persisting '{artifact_name}' to: {target_path}")
                 self._serialize_artifact(data, target_path)
-                manifest[name] = str(target_path)
-                logger.info(f"Persisted '{name}' → {target_path}")
+                manifest[artifact_name] = str(target_path)
+                logger.info(f"Persisted '{artifact_name}' → {target_path}")
             except ArtifactPersistenceError:
-                logger.exception(f"Failed to serialize '{name}' → {target_path}")
+                logger.exception(f"Failed to serialize '{artifact_name}' → {target_path}")
             except OSError as e:
                 logger.error(
-                    f"Dir creation failed for '{name}' at {target_path.parent}: {e}",
+                    f"Dir creation failed for '{artifact_name}' at {target_path.parent}: {e}",
                     exc_info=True,
                 )
             except Exception as e:
                 logger.error(
-                    f"Unexpected error persisting '{name}' → {target_path}: {e}",
+                    f"Unexpected error persisting '{artifact_name}' → {target_path}: {e}",
                     exc_info=True,
                 )
 

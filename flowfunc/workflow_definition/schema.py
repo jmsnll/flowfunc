@@ -182,7 +182,6 @@ class WorkflowSpec(BaseModel):
         if v is None:
             return None
         for artifact_path, source_str in v.items():
-            print(f"{artifact_path=} -> {source_str=}")
             if not DEPENDENCY_STRING_PATTERN.match(source_str):
                 raise ValueError(
                     f"Invalid source format for artifact '{artifact_path}'. "
