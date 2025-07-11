@@ -59,7 +59,7 @@ class ConsoleReporter:
         if not summary:
             return
 
-        panel_title = f"📝 Run Summary: {summary.status.value.upper()}"
+        panel_title = f"📝  Run Summary: {summary.status.value.upper()}"
         border_style = "green" if summary.status.value == "success" else "red"
 
         content = Text()
