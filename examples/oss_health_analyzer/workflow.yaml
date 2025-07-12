@@ -1,0 +1,102 @@
+apiVersion: flowfunc.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: oss-health-analyzer-pipeline
+spec:
+  default_module: examples.oss_health_analyzer.main
+
+  params:
+    repo_slugs:
+      value:
+        - vuejs/vue
+        - facebook/react
+        - tensorflow/tensorflow
+        - d3/d3
+        - facebook/react-native
+        - microsoft/vscode
+        - torvalds/linux
+        - ohmyzsh/ohmyzsh
+        - golang/go
+        - nodejs/node
+        - kubernetes/kubernetes
+
+  steps:
+    # Phase 1: Data Fetching (Parallel per Repository)
+    - name: get_repo_details
+      func: examples.oss_health_analyzer.main.fetch_repo_details
+      params:
+        repo_slug: "{{ params.repo_slugs }}"
+      produces: repo_details
+      options:
+        map_mode: broadcast
+      retries:
+        max_attempts: 5
+
+    - name: get_commit_history
+      func: examples.oss_health_analyzer.main.fetch_commit_activity
+      params:
+        repo_slug: "{{ params.repo_slugs }}"
+      produces: commits
+      options:
+        map_mode: broadcast
+      retries:
+        max_attempts: 5
+
+    - name: get_issue_list
+      func: examples.oss_health_analyzer.main.fetch_open_issues
+      params:
+        repo_slug: "{{ params.repo_slugs }}"
+      produces: issues
+      options:
+        map_mode: broadcast
+      retries:
+        max_attempts: 5
+
+    # Phase 2: Data Analysis (Parallel per Repository)
+    - name: calc_commit_cadence
+      func: examples.oss_health_analyzer.main.analyze_commit_cadence
+      consumes:
+        commits: "{{ steps.get_commit_history.produces.commits }}"
+      produces: commit_cadence_stats
+      options:
+        map_mode: broadcast
+
+    - name: calc_issue_staleness
+      func: examples.oss_health_analyzer.main.analyze_issue_staleness
+      consumes:
+        issues: "{{ steps.get_issue_list.produces.issues }}"
+      produces: issue_staleness_stats
+      options:
+        map_mode: broadcast
+
+    # Phase 3: Scoring (Parallel per Repository)
+    - name: score_each_repo
+      func: examples.oss_health_analyzer.main.generate_health_score
+      consumes:
+        details: "{{ steps.get_repo_details.produces.repo_details }}"
+        commit_cadence: "{{ steps.calc_commit_cadence.produces.commit_cadence_stats }}"
+        issue_staleness: "{{ steps.calc_issue_staleness.produces.issue_staleness_stats }}"
+      produces: repo_scores
+      options:
+        map_mode: zip
+
+    # Convert array to list for aggregation
+    - name: convert_scores_to_list
+      func: examples.oss_health_analyzer.main.to_list
+      consumes:
+        x: "{{ steps.score_each_repo.produces.repo_scores }}"
+      produces: repo_scores_list
+      options:
+        map_mode: none
+
+    # Phase 4: Aggregation and Reporting
+    - name: generate_final_report
+      func: examples.oss_health_analyzer.main.create_markdown_report
+      consumes:
+        all_scores: "{{ steps.convert_scores_to_list.produces.repo_scores_list }}"
+      produces: project_health_report
+      options:
+        map_mode: none
+
+  artifacts:
+    project_health_report.txt: "{{ steps.generate_final_report.produces.project_health_report }}" 

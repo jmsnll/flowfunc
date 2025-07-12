@@ -1,0 +1,15 @@
+[project]
+name = "oss-health-analyzer-example"
+version = "0.1.0"
+description = "Advanced flowfunc example demonstrating complex multi-stage data processing"
+authors = [
+    {name = "flowfunc", email = "team@flowfunc.dev"}
+]
+dependencies = [
+    "requests>=2.31.0",
+]
+requires-python = ">=3.8"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build" 
