@@ -1,0 +1,6 @@
+[project]
+name = "flowfunc-example-pokemon-analysis"
+version = "0.1.0"
+dependencies = [
+  "requests"
+] 

@@ -55,7 +55,7 @@ class TestGetPipefuncMapspec:
     ) -> None:
         """Tests various scenarios for 'broadcast' map_mode."""
         step = StepDefinition(name="test_step", **step_data)
-        options = StepOptions(output_name=step.outputs)
+        options = StepOptions(output_name=step.produces)
         options_with_mapsec = resolve_mapspec(options, step)
 
         assert options_with_mapsec.mapspec == expected_spec
@@ -98,7 +98,7 @@ class TestGetPipefuncMapspec:
     ) -> None:
         """Tests various scenarios for 'zip' map_mode."""
         step = StepDefinition(name="test_step", **step_data)
-        options = StepOptions(output_name=step.outputs)
+        options = StepOptions(output_name=step.produces)
         options_with_mapsec = resolve_mapspec(options, step)
 
         assert options_with_mapsec.mapspec == expected_spec
@@ -133,7 +133,7 @@ class TestGetPipefuncMapspec:
     ) -> None:
         """Tests various scenarios for 'aggregate' map_mode."""
         step = StepDefinition(name="test_step", **step_data)
-        options = StepOptions(output_name=step.outputs)
+        options = StepOptions(output_name=step.produces)
         options_with_mapsec = resolve_mapspec(options, step)
 
         assert options_with_mapsec.mapspec == expected_spec

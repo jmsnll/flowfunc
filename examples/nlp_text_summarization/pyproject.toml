@@ -1,0 +1,7 @@
+[project]
+name = "flowfunc-example-nlp-text-summarization"
+version = "0.1.0"
+dependencies = [
+  "nltk",
+  "numpy"
+] 

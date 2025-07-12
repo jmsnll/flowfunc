@@ -7,9 +7,11 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
   "click>=8.2.1",
+  "jinja2>=3.1.6",
   "pipefunc[all]>=0.76.0",
   "platformdirs>=4.3.8",
   "rich>=14.0.0",
+  "tenacity>=9.1.2",
   "toml>=0.10.2",
   "tomlkit>=0.13.2",
 ]
@@ -111,4 +113,12 @@ docs = [
     "numpy>=2.2.6",
     "pipefunc[all]>=0.77.0",
     "scikit-image>=0.25.2",
+]
+
+[tool.uv.workspace]
+members = [
+  "examples/broadcast",
+  "examples/zip",
+  "examples/pokemon_analysis",
+  "examples/nlp_text_summarization"
 ]

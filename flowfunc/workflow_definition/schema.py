@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+import re
 from enum import Enum
-from pathlib import Path
 from typing import Any
 from typing import Literal
 
@@ -11,13 +10,24 @@ from pydantic import BaseModel
 from pydantic import Field
 from pydantic import field_validator
 from pydantic import model_validator
+
 from pydantic.main import IncEx
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
+
+DEPENDENCY_STRING_PATTERN = re.compile(
+    r"^{{\s*steps\.([a-z0-9_]+)\.produces\.(\w+)\s*}}$"
+)
+DEFAULT_RETRY_EXCEPTIONS = [
+    "requests.exceptions.ConnectionError",
+    "requests.exceptions.Timeout",
+]
 
 
 class KindEnum(str, Enum):
     PIPELINE = "Pipeline"
+    WORKFLOW = "Workflow"
 
 
 class InputTypeEnum(str, Enum):
@@ -58,6 +68,28 @@ class Resources(BaseModel):
                     f"Key '{key}' is a reserved field and cannot be used in 'advanced_options'."
                     f"Please set '{key}' at the top level of resources."
                 )
+        return v
+
+
+class RetryOptions(BaseModel):
+    max_attempts: int = Field(
+        default=1, ge=1, description="The maximum number of times to run the step."
+    )
+    wait_exponential_multiplier: int = Field(
+        default=1.5, description="The multiplier for exponential backoff (in seconds)."
+    )
+    wait_exponential_max: int = Field(
+        default=60, description="The maximum wait time between retries (in seconds)."
+    )
+    retry_on_exceptions: list[str] = Field(
+        default_factory=lambda: DEFAULT_RETRY_EXCEPTIONS,
+        description="A list of exception type names that should trigger a retry.",
+    )
+
+    @field_validator("max_attempts")
+    def attempts_must_be_positive(cls, v):
+        if v < 1:
+            raise ValueError("max_attempts must be 1 or greater.")
         return v
 
 
@@ -132,13 +164,29 @@ class StepDefinition(BaseModel):
     name: str
     func: str | None = None
     description: str | None = None
-    inputs: dict[str, InputItem | str | int | float] | None = Field(
-        default_factory=dict
-    )
-    parameters: dict[str, Any] | None = Field(default_factory=dict)
-    outputs: str | list[str] | None = None
+    params: dict[str, Any] | None = Field(default_factory=dict)
+    consumes: dict[str, str] | None = Field(default_factory=dict)
+    produces: str | list[str] | None = None
     resources: Resources | None = None
     options: StepOptions | None = Field(default_factory=StepOptions)
+    retries: RetryOptions | None = Field(default_factory=RetryOptions)
+
+    @field_validator("consumes")
+    @classmethod
+    def validate_consumes_format(
+        cls, v: dict[str, str] | None
+    ) -> dict[str, str] | None:
+        """Ensures that dependency strings are correctly formatted."""
+        if v is None:
+            return None
+        for arg_name, dependency_str in v.items():
+            if not DEPENDENCY_STRING_PATTERN.match(dependency_str):
+                raise ValueError(
+                    f"Invalid format for 'consumes' argument '{arg_name}'. "
+                    f"Expected '{{{{ steps.<step_name>.produces.<output_name> }}}}', "
+                    f"but got '{dependency_str}'."
+                )
+        return v
 
 
 class WorkflowSpec(BaseModel):
@@ -146,16 +194,28 @@ class WorkflowSpec(BaseModel):
     options: WorkflowSpecOptions | None | None = Field(
         default_factory=WorkflowSpecOptions
     )
-    inputs: dict[str, InputItem | str] | None = Field(default_factory=dict)
-    outputs: dict[str, Path] | None = Field(default_factory=dict)
+    params: dict[str, Any] | None = Field(default_factory=dict)
+    artifacts: dict[str, str] | None = Field(default_factory=dict)
     steps: list[StepDefinition] = Field()
 
     model_config = {"extra": "forbid"}
 
-    def model_dump(self, **kwargs: dict[str, Any] | None) -> dict[str, Any]:
-        base = super().model_dump(**kwargs)
-        base["inputs"] = {k: v.value for k, v in self.inputs.items()}
-        return base
+    @field_validator("artifacts")
+    @classmethod
+    def validate_artifacts_format(
+        cls, v: dict[str, str] | None
+    ) -> dict[str, str] | None:
+        """Ensures that artifact source strings are correctly formatted."""
+        if v is None:
+            return None
+        for artifact_path, source_str in v.items():
+            if not DEPENDENCY_STRING_PATTERN.match(source_str):
+                raise ValueError(
+                    f"Invalid source format for artifact '{artifact_path}'. "
+                    f"Expected '{{{{ steps.<step_name>.produces.<output_name> }}}}', "
+                    f"but got '{source_str}'."
+                )
+        return v
 
 
 class WorkflowDefinition(BaseModel):
