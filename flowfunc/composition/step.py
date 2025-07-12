@@ -240,6 +240,15 @@ def validate_step_inputs(
     return options
 
 
+def resolve_defaults(options: StepOptions, step: StepDefinition, **_) -> StepOptions:
+    """Resolves input defaults from step parameters."""
+    if not step.params:
+        return options
+    return options.model_copy(
+        update={"defaults": {**options.defaults, **step.params}}
+    )
+
+
 def resolve_resources(
     options: StepOptions, step: StepDefinition, workflow: WorkflowDefinition, **_
 ) -> StepOptions:
