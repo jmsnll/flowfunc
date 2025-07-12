@@ -114,3 +114,11 @@ docs = [
     "pipefunc[all]>=0.77.0",
     "scikit-image>=0.25.2",
 ]
+
+[tool.uv.workspace]
+members = [
+  "examples/broadcast",
+  "examples/zip",
+  "examples/pokemon_analysis",
+  "examples/nlp_text_summarization"
+]

@@ -2,6 +2,15 @@ version = 1
 revision = 2
 requires-python = ">=3.13"
 
+[manifest]
+members = [
+    "flowfunc",
+    "flowfunc-example-broadcast",
+    "flowfunc-example-nlp-text-summarization",
+    "flowfunc-example-pokemon-analysis",
+    "flowfunc-example-zip",
+]
+
 [[package]]
 name = "adaptive"
 version = "1.4.1"
@@ -447,6 +456,48 @@ docs = [
     { name = "pipefunc", extras = ["all"], specifier = ">=0.77.0" },
     { name = "scikit-image", specifier = ">=0.25.2" },
 ]
+
+[[package]]
+name = "flowfunc-example-broadcast"
+version = "0.1.0"
+source = { virtual = "examples/broadcast" }
+dependencies = [
+    { name = "requests" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "requests" }]
+
+[[package]]
+name = "flowfunc-example-nlp-text-summarization"
+version = "0.1.0"
+source = { virtual = "examples/nlp_text_summarization" }
+dependencies = [
+    { name = "nltk" },
+    { name = "numpy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "nltk" },
+    { name = "numpy" },
+]
+
+[[package]]
+name = "flowfunc-example-pokemon-analysis"
+version = "0.1.0"
+source = { virtual = "examples/pokemon_analysis" }
+dependencies = [
+    { name = "requests" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "requests" }]
+
+[[package]]
+name = "flowfunc-example-zip"
+version = "0.1.0"
+source = { virtual = "examples/zip" }
 
 [[package]]
 name = "fonttools"
