@@ -21,10 +21,10 @@ spec:
       options:
         map_mode: zip
       params:
-        name: "{{ globals.character_names }}"
-        archetype: "{{ globals.character_archetypes }}"
-        power_level: "{{ globals.power_levels }}"
-        design_year: "{{ globals.creation_years }}"
+        name: "{{ params.character_names }}"
+        archetype: "{{ params.character_archetypes }}"
+        power_level: "{{ params.power_levels }}"
+        design_year: "{{ params.creation_years }}"
       produces: "character_roster"
 
   artifacts:

@@ -10,7 +10,7 @@ spec:
   options:
     scope: "nlp"
 
-  inputs:
+  params:
     text:
       description: "A list of input texts to process. Each text will be processed individually."
       type: "list"
@@ -22,40 +22,41 @@ spec:
   steps:
     - name: "tokenize_text"
       description: "Tokenizes input text into words, removes stopwords and non-alphabetic characters."
-      inputs:
-        text: "{{ globals.text }}"
-      outputs: "tokens"
+      params:
+        text: "{{ params.text }}"
+      produces: "tokens"
 
     - name: "extract_keywords"
       description: "Extracts the most common keywords from tokenized text."
-      inputs:
-        tokens: "{{ steps.tokenize_text.outputs.tokens }}"
-      outputs: "keywords"
+      consumes:
+        tokens: "{{ steps.tokenize_text.produces.tokens }}"
+      produces: "keywords"
 
     - name: "generate_summary"
       description: "Generates a summary from the original text using extracted keywords."
-      inputs:
-        text: "{{ globals.text }}"
-        keywords: "{{ steps.extract_keywords.outputs.keywords }}"
-      outputs: "summary"
+      params:
+        text: "{{ params.text }}"
+      consumes:
+        keywords: "{{ steps.extract_keywords.produces.keywords }}"
+      produces: "summary"
       options:
         mapspec: "text[i], keywords[i] -> summary[i]"
 
     - name: "analyze_sentiment"
       description: "Analyzes the sentiment of the generated summary."
-      inputs:
-        summary: "{{ steps.generate_summary.outputs.summary }}"
-      outputs: "sentiment"
+      consumes:
+        summary: "{{ steps.generate_summary.produces.summary }}"
+      produces: "sentiment"
       options:
         mapspec: "summary[i] -> sentiment[i]"
 
     - name: "aggregate_summarization"
       description: "Aggregates the sentiment analysis results."
-      inputs:
-        sentiment: "{{ steps.analyze_sentiment.outputs.sentiment }}"
-      outputs: "result_summary"
+      consumes:
+        sentiment: "{{ steps.analyze_sentiment.produces.sentiment }}"
+      produces: "result_summary"
       options:
         map_mode: "none"
 
   artifacts:
-    result_summary: "final_sentiment_report.json"
+    "final_sentiment.json": "{{ steps.aggregate_summarization.produces.result_summary }}"

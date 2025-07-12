@@ -5,7 +5,7 @@ metadata:
 spec:
   default_module: examples.broadcast.health_checker
 
-  inputs:
+  params:
     environments:
       value: ["playground", "staging", "production"]
     regions:
@@ -16,10 +16,10 @@ spec:
       description: "Checks service health across all environments and regions."
       options:
         map_mode: broadcast
-      inputs:
-        environment: "{{ globals.environments }}"
-        region: " {{ globals.regions }}"
-      outputs: "health_status_grid"
+      params:
+        environment: "{{ params.environments }}"
+        region: "{{ params.regions }}"
+      produces: "health_status_grid"
 
   artifacts:
-    health_status_grid: "health_check_summary.json"
+    "health_check_summary.json": "{{ steps.check_service_health.produces.health_status_grid }}"
