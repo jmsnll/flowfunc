@@ -4,6 +4,11 @@ import string
 from typing import Any
 
 import jinja2
+from tenacity import (
+    Retrying,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from flowfunc.composition.utils import import_callable
 from flowfunc.exceptions import PipelineBuildError
@@ -13,6 +18,9 @@ from flowfunc.workflow_definition.schema import StepDefinition
 from flowfunc.workflow_definition.schema import WorkflowDefinition
 from flowfunc.workflow_definition.utils import is_direct_jinja_reference
 from flowfunc.workflow_definition.utils import is_jinja_template
+
+import contextlib
+import io
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +54,65 @@ def resolve_callable(
     function_path_str = step.func or f"{workflow.spec.default_module}.{step.name}"
     try:
         resolved_func = import_callable(function_path_str)
-        return options.model_copy(update={"func": resolved_func})
     except (ImportError, AttributeError, TypeError) as e:
         raise PipelineBuildError(
             f"Could not import callable '{function_path_str}' for step '{step.name}': {e}"
         ) from e
+
+    def with_retries(func):
+        import functools
+
+        @functools.wraps(func)
+        def wrapped_function(*args, **kwargs):
+            retrier = Retrying(
+                stop=stop_after_attempt(step.retries.max_attempts),
+                wait=wait_exponential(
+                    multiplier=step.retries.wait_exponential_multiplier,
+                    max=step.retries.wait_exponential_max,
+                ),
+            )
+            # Create a logger specific to the function's module
+            func_logger = logging.getLogger(func.__module__)
+            buf = io.StringIO()
+            # Capture stdout and stderr
+            with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+                try:
+                    result = retrier(func, *args, **kwargs)
+                except Exception as e:
+                    output = buf.getvalue()
+                    for line in output.splitlines():
+                        if line.strip():
+                            # Create a custom log record with the function's location and step name
+                            record = logging.LogRecord(
+                                name=func.__module__,
+                                level=logging.INFO,
+                                pathname=func.__code__.co_filename,
+                                lineno=func.__code__.co_firstlineno,
+                                msg=f"[Step '{step.name}'] {line}",
+                                args=(),
+                                exc_info=None,
+                            )
+                            func_logger.handle(record)
+                    raise
+            output = buf.getvalue()
+            for line in output.splitlines():
+                if line.strip():
+                    # Create a custom log record with the function's location and step name
+                    record = logging.LogRecord(
+                        name=func.__module__,
+                        level=logging.INFO,
+                        pathname=func.__code__.co_filename,
+                        lineno=func.__code__.co_firstlineno,
+                        msg=f"[{step.name}] {line}",
+                        args=(),
+                        exc_info=None,
+                    )
+                    func_logger.handle(record)
+            return result
+
+        return wrapped_function
+
+    return options.model_copy(update={"func": with_retries(resolved_func)})
 
 
 def resolve_inputs(

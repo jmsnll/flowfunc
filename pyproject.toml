@@ -11,6 +11,7 @@ dependencies = [
   "pipefunc[all]>=0.76.0",
   "platformdirs>=4.3.8",
   "rich>=14.0.0",
+  "tenacity>=9.1.2",
   "toml>=0.10.2",
   "tomlkit>=0.13.2",
 ]

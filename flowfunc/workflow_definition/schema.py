@@ -169,7 +169,7 @@ class StepDefinition(BaseModel):
     produces: str | list[str] | None = None
     resources: Resources | None = None
     options: StepOptions | None = Field(default_factory=StepOptions)
-    retries: RetryOptions | None = None
+    retries: RetryOptions | None = Field(default_factory=RetryOptions)
 
     @field_validator("consumes")
     @classmethod
