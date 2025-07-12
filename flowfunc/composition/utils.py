@@ -35,6 +35,9 @@ def build_jinja_rendering_context_for_outputs(
         "steps": {},
         "params": workflow_model.spec.params or {},
     }
+    
+    scope = getattr(workflow_model.spec.options, "scope", None)
+    
     for step in workflow_model.spec.steps:
         if step.produces:
             step_name = step.name
@@ -44,8 +47,9 @@ def build_jinja_rendering_context_for_outputs(
             if step_name not in context["steps"]:
                 context["steps"][step_name] = {"produces": {}}
             for output_name in output_names:
-                if output_name in pipeline_results:
-                    context["steps"][step_name]["produces"][output_name] = output_name
+                scoped = f"{scope}.{output_name}" if scope else output_name
+                if scoped in pipeline_results:
+                    context["steps"][step_name]["produces"][output_name] = scoped
 
     # Object-like access for steps
     class StepsContext:
@@ -56,6 +60,8 @@ def build_jinja_rendering_context_for_outputs(
             if name in self._steps:
                 return self._steps[name]
             raise AttributeError(f"'StepsContext' object has no attribute '{name}'")
+
+    print(context)
 
     context["steps"] = StepsContext(context["steps"])
     return context
